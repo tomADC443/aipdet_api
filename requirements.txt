@@ -1,0 +1,2 @@
+'uvicorn[standard]' pydantic-settings 'pyjwt[crypto]'
+earthengine-api
