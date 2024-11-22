@@ -1,2 +1,6 @@
-'uvicorn[standard]' pydantic-settings 'pyjwt[crypto]'
+uvicorn[standard]
+pydantic-settings 
+pyjwt[crypto]
 earthengine-api
+fastapi[standard]
+google-cloud-bigquery
