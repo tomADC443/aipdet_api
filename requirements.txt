@@ -4,3 +4,8 @@ pyjwt[crypto]
 earthengine-api
 fastapi[standard]
 google-cloud-bigquery
+sqlalchemy
+cloud-sql-python-connector[pg8000]
+dotenv
+bcrypt
+jwt
