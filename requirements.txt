@@ -9,3 +9,4 @@ cloud-sql-python-connector[pg8000]
 dotenv
 bcrypt
 jwt
+pydantic-geojson
