@@ -66,6 +66,11 @@ class UserLoginResponse(BaseModel):
         example="Login successful",
         description="A message indicating the outcome of the login operation."
     )
+    expires: int = Field(
+        ...,
+        example="1733308210",
+        description="The date and time when the login token expires as unix timestamp (seconds)."
+    )
 
 
 class ResetPasswordRequest(BaseModel):

@@ -12,7 +12,7 @@ from src.config import get_settings
 from src.user.constants import HTML_RESPONSE_SUCCESS, HTML_RESPONSE_ERROR
 from src.user.exceptions import UnauthenticatedLoginException, BadTokenException
 import jwt
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 # User router
 user_router = APIRouter()
 settings = get_settings()
@@ -127,21 +127,25 @@ def login(user: UserLoginRequest, response: Response, db: Session = Depends(get_
         "lastName": db_user.last_name,
     }
     # Replace with a secure secret key
-    jwt_secret = os.getenv("JWT_SECRET", "your_jwt_secret")
-    jwt_algorithm = "HS256"
+    jwt_secret = settings.JWT_SECRET
+    jwt_algorithm = settings.JWT_ALGORITHM
     token = jwt.encode(jwt_payload, jwt_secret, algorithm=jwt_algorithm)
 
+    cookie_validity = 14400  # 4 hours
+    utc_now = datetime.now(timezone.utc)  # Explicitly set to UTC
+    cookie_expires_at = utc_now + timedelta(seconds=cookie_validity)
+    cookie_secure_flag = False if settings.RUNNING_ENV == "development" else True
     # Set the token in a secure cookie
     response.set_cookie(
         key="auth_token",
         value=token,
         httponly=True,
-        secure=True,
+        secure=cookie_secure_flag,
         samesite="Strict",
-        max_age=14400  # 4 hours
+        max_age=cookie_validity  # 4 hours
     )
 
-    return {"message": "Login successful."}
+    return {"message": "Login successful.", "expires": int(cookie_expires_at.timestamp())}
 
 
 @user_router.get("/verify-email", response_class=HTMLResponse)
