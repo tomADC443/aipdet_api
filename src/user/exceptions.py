@@ -17,7 +17,7 @@ class UnauthenticatedException(HTTPException):
 class UnauthenticatedLoginException(HTTPException):
     def __init__(self):
         super().__init__(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password."
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password."
         )
 
 
