@@ -3,4 +3,5 @@ private*
 __pycache__/
 venv/
 .pytest_cache/
+venv/*
 
