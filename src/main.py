@@ -5,22 +5,28 @@ from src.database import Base, engine, get_db, close_connector
 from src.user.router import user_router
 from google.cloud import bigquery
 from fastapi.responses import JSONResponse
+from src.dependencies import get_current_user, login_required
 # Creates app instance
 app = FastAPI()
 
 # CORS configuration
 origins = [
     "http://localhost:5173",
-    "http://127.0.0.1:53023",  # Add frontend origin
+    "localhost:5173",
+    "http://127.0.0.1:61235",
+    " 127.0.0.1:52701",
+    "127.0.0.1:61179"
+    "127.0.0.1:61235"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,  # Specify frontend origin
-    allow_credentials=False,  # Allow cookies and credentials if needed
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_credentials=True,  # Allow cookies and credentials if needed
+    # Allow all methods (GET, POST, etc.)
+    allow_methods=["OPTIONS", "GET", "POST"],
     allow_headers=["*"],  # Allow all headers
-)
+),
 
 # Include user router
 app.include_router(user_router, prefix="/api/user",
@@ -41,6 +47,12 @@ async def global_exception_handler(request: Request, exc: Exception):
         # Add CORS headers
         headers={"Access-Control-Allow-Origin": "http://localhost:5173"},
     )
+
+
+@app.get("/protected-endpoint")
+@login_required
+def some(current_user: dict = Depends(get_current_user)):
+    return {"message": f"Hello, {current_user['email']}!"}
 
 
 @app.get("/api/public")
