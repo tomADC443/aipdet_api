@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     POSTMARK_API_TOKEN: str
     BASE_URL: str
     FRONTEND_BASE_URL: str
+    RUNNING_ENV: str
+    JWT_SECRET: str
+    JWT_ALGORITHM: str
 
 
 @lru_cache()
