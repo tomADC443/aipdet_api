@@ -1,9 +1,7 @@
 import uuid
 from sqlalchemy import Column, DateTime, JSON, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from src.database import Base
 
 
 class AOI(Base):
