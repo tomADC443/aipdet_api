@@ -3,13 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from src.database import get_db  # Database dependency
 from src.aoi.models import AOI
-from src.aoi.schemas import AOICreationRequest
-from src.config import get_settings
+from src.aoi.schemas import AOICreationRequest, AoiGetResponse
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 
 aoi_router = APIRouter()
-settings = get_settings()
 
 
 @login_required
@@ -46,8 +44,19 @@ def create_aoi(aoi: AOICreationRequest, db: Session = Depends(get_db), current_u
 
 
 @ login_required
-@ aoi_router.get("")
+@ aoi_router.get("", response_model=AoiGetResponse)
 def get_aois(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     user_id = current_user['sub']
-    aoi_query_result = select(AOI).where(user_id == user_id)
-    print(aoi_query_result)
+    aoi_query = select(AOI).where(AOI.user_id == user_id)
+    aoi_query_result = db.execute(aoi_query).scalars().all()
+    responseData = [
+        {
+            "id": str(aoi.id),
+            "name": aoi.name,
+            "description": aoi.description,
+            "geometry": aoi.geometry,
+            "createdAt": int(aoi.created_at.timestamp()),
+
+        } for aoi in aoi_query_result
+    ]
+    return {"aois": responseData}

@@ -7,6 +7,7 @@ from google.cloud import bigquery
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 from src.aoi.router import aoi_router
+from src.task.router import task_router
 # Creates app instance
 app = FastAPI()
 
@@ -36,6 +37,8 @@ app.include_router(user_router, prefix="/api/user",
                    tags=["User and Authentication"])
 app.include_router(aoi_router, prefix="/api/aoi",
                    tags=["AOI - Area of Interest"])
+app.include_router(task_router, prefix="/api/task",
+                   tags=["Task"])
 
 # Initialize database models
 Base.metadata.create_all(bind=engine)
