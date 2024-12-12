@@ -10,3 +10,5 @@ dotenv
 bcrypt
 jwt
 pydantic-geojson
+timezonefinder
+shapely
