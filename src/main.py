@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 from src.aoi.router import aoi_router
 from src.task.router import task_router
+from src.gee.task_processing.test_task import test_task
 # Creates app instance
 app = FastAPI()
 
@@ -103,3 +104,8 @@ async def run_query():
         return [dict(row) for row in results]
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.get("/test/gee")
+def run_gee_task():
+    test_task()
