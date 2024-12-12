@@ -7,3 +7,25 @@ def authenticate():
     credentials = ee.ServiceAccountCredentials(
         service_account, os.path.abspath("private-key-gee-service-account.json"))
     ee.Initialize(credentials)
+
+
+# def authenticate():
+#     if config.ENVIRONMENT == Environment.LOCAL.value:
+#         ee.Authenticate()
+#         ee.Initialize(project=config.GOOGLE_PROJECT_ID)
+#         print("Successfully authenticated - LOCAL Environment")
+#     elif (
+#         config.ENVIRONMENT == Environment.DEVELOPMENT.value
+#         or config.ENVIRONMENT == Environment.PRODUCTION.value
+#     ):
+#         service_account = config.GOOGLE_EARTH_ENGINE_SERVICE_ACCOUNT_EMAIL
+#         credentials = ee.ServiceAccountCredentials(
+#             service_account,
+#             key_data=base64.b64decode(
+#                 config.GOOGLE_EARTH_ENGINE_SERVICE_ACCOUNT_CREDENTIALS_B64
+#             ).decode("utf-8"),
+#         )
+#         ee.Initialize(credentials)
+#         print("Successfully authenticated - DEVELOPMENT/PRODUCTION Environment")
+#     else:
+#         raise ValueError("Invalid environment:" + config.ENVIRONMENT)
