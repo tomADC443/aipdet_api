@@ -1,17 +1,20 @@
+from typing import List, Literal
 from pydantic import BaseModel, Field
-from typing import List
 
 
-class PolygonInputSchema(BaseModel):
-    # Enforce the GeoJSON Feature type
-    type: str = Field("Feature", const=True)
-    geometry: dict
-    coordinates: List[List[List[float]]
-                      ] = Field(..., description="Polygon coordinates")
+class Geometry(BaseModel):
+    type: Literal["Polygon"]
+    coordinates: List[List[List[float]]] = Field(
+        ...,
+        description="A list of linear ring coordinates defining the polygon. The first and last point of each ring must be the same."
+    )
 
-    @property
-    def geometry(self):
-        return {
-            "type": "Polygon",
-            "coordinates": self.coordinates,
-        }
+
+class Properties(BaseModel):
+    pass
+
+
+class GeoJSONPolygonFeature(BaseModel):
+    type: Literal["Feature"]
+    geometry: Geometry
+    properties: Properties

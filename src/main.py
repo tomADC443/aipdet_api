@@ -1,14 +1,13 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from src.database import Base, engine, get_db, close_connector
+from src.database import Base, engine, close_connector
 from src.user.router import user_router
-from google.cloud import bigquery
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 from src.aoi.router import aoi_router
 from src.task.router import task_router
-from src.gee.task_processing.test_task import test_task
+from src.gee.task_processing.main import start_task_process
+import json
 # Creates app instance
 app = FastAPI()
 
@@ -31,7 +30,7 @@ app.add_middleware(
     # Allow all methods (GET, POST, etc.)
     allow_methods=["OPTIONS", "GET", "POST"],
     allow_headers=["*"],  # Allow all headers
-),
+)
 
 # Include user router
 app.include_router(user_router, prefix="/api/user",
@@ -79,33 +78,8 @@ def shutdown_event():
     close_connector()
 
 
-@app.get("/api/db")
-def read_root(db: Session = Depends(get_db)):
-    # Example query to verify the database connection
-    result = db.execute("SELECT 1").fetchall()
-    return {"result": result}
-
-
-@app.get("/test/db")
-async def run_query():
-    query = """
-    SELECT * FROM `aiap-436610.comp_gee_data.process`
-    LIMIT 10
-    """
-    try:
-        # Initialize BigQuery client
-        client = bigquery.Client.from_service_account_json(
-            'private-key-bigQuery-account.json')
-        query_job = client.query(query)  # Make API request
-        results = query_job.result()  # Wait for job to complete
-
-        # Convert the results to a list of dictionaries
-        print(results)
-        return [dict(row) for row in results]
-    except Exception as e:
-        return {"error": str(e)}
-
-
 @app.get("/test/gee")
 def run_gee_task():
-    test_task()
+    aoi = json.loads("{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"coordinates\":[[[27.847920511878414,-25.725698453463608],[27.849648903757668,-25.72786102203966],[27.85089541547137,-25.730387610357084],[27.854595997118707,-25.732984325731593],[27.855725648358202,-25.736212595481177],[27.85560878788533,-25.73926533512784],[27.849298322338996,-25.7426337844268],[27.858841927641066,-25.752001781917002],[27.876682626534233,-25.747300332443075],[27.861971869876754,-25.73272592686331],[27.857284896304805,-25.72992186217361],[27.852621021936017,-25.728958737688274],[27.851037692232808,-25.728175513503146],[27.850507559519656,-25.726851025094106],[27.84953918376266,-25.727073896772637],[27.849411951912174,-25.726430751650298],[27.848881819198,-25.72544373999429],[27.84835168648479,-25.725749396092],[27.847920511878414,-25.725698453463608]]],\"type\":\"Polygon\"}}")
+
+    start_task_process(aoi)

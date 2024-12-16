@@ -3,7 +3,7 @@ from datetime import datetime
 
 
 def get_imagery(
-    aoi: ee.Geometry.Polygon,
+    aoi: ee.Geometry,
     start_date: datetime,
     end_date: datetime,
 ) -> ee.ImageCollection:
