@@ -1,11 +1,11 @@
 import ee
 
 
-def process_collection(image_collection: ee.ImageCollection):
+def process_collection(image_collection: ee.ImageCollection, aoi: ee.Geometry) -> ee.ImageCollection:
 
     image_collection = image_collection.map(add_ndvi)
-    image_collection = image_collection.map(generate_valid_area_polygons)
-    image_collection = image_collection.map(generate_ndvi_polygons)
+    image_collection = generate_valid_area_polygons(image_collection, aoi)
+    image_collection = generate_ndvi_polygons(image_collection, aoi)
     image_collection = image_collection.map(combine_ndvi_and_valid_polygons)
 
     return image_collection
@@ -16,27 +16,41 @@ def add_ndvi(image):
     return image.addBands(ndvi)
 
 
-def generate_valid_area_polygons(image: ee.Image) -> ee.Image:
-    # Masked areas are considered invalid
-    valid_mask = image.mask()
-    valid_polygons = valid_mask.reduceToVectors(
-        geometryType='polygon',
-        reducer=ee.Reducer.count(),
-        scale=10,
-        bestEffort=True
-    )
-    return ee.Image(image.set('valid_polygons', valid_polygons))
+def generate_valid_area_polygons(image_collection: ee.ImageCollection, aoi: ee.Geometry) -> ee.ImageCollection:
+
+    def valid_areas_to_polygons(image):
+        return image.mask().gt(0).selfMask().toInt().reduceToVectors(
+            geometry=aoi,
+            geometryType='polygon',
+            reducer=ee.Reducer.count(),
+            scale=10,
+            bestEffort=True
+        )
+
+    def set_polygons(image):
+        return image.set('valid_polygons', valid_areas_to_polygons(image))
+
+    image_collection = image_collection.map(set_polygons)
+    return image_collection
 
 
-def generate_ndvi_polygons(image: ee.Image) -> ee.Image:
+def generate_ndvi_polygons(image_collection: ee.ImageCollection, aoi: ee.Geometry) -> ee.ImageCollection:
 
-    ndvi_polygons = image.select('NDVI').gte(0.6).reduceToVectors(
-        geometryType='polygon',
-        reducer=ee.Reducer.count(),
-        scale=10,
-        bestEffort=True
-    )
-    return ee.Image(image.set('ndvi_polygons', ndvi_polygons))
+    def ndvi_areas_to_polygons(image):
+        return image.select('NDVI').gte(0.6).reduceToVectors(
+            geometryType='polygon',
+            geometry=aoi,
+            reducer=ee.Reducer.count(),
+            scale=10,
+            bestEffort=True
+        )
+
+    def set_polygons(image):
+        return image.set('ndvi_polygons', ndvi_areas_to_polygons(image))
+
+    image_collection = image_collection.map(set_polygons)
+
+    return image_collection
 
 
 def combine_ndvi_and_valid_polygons(image: ee.Image) -> ee.Image:
@@ -45,17 +59,16 @@ def combine_ndvi_and_valid_polygons(image: ee.Image) -> ee.Image:
     valid_polygons_feat_coll = ee.FeatureCollection(valid_polygons)
     ndvi_polygons_feat_coll = ee.FeatureCollection(ndvi_polygons)
     combined_polygons = ee.FeatureCollection(valid_polygons_feat_coll.map(
-        combined_polygons=valid_polygons_feat_coll.map(
-            lambda valid_feature: valid_feature.set(
-                'ndvi_polygons', ndvi_polygons_feat_coll.filter(
-                    ee.Filter.Or(
-                        # Fully inside
-                        ee.Filter.within('.geo', valid_feature.geometry()),
-                        # Exactly equal
-                        ee.Filter.equals('.geo', valid_feature.geometry())
-                    )
+        lambda valid_feature: valid_feature.set(
+            'ndvi_polygons', ndvi_polygons_feat_coll.filter(
+                ee.Filter.Or(
+                    # Fully inside
+                    ee.Filter.contains('.geo', valid_feature.geometry()),
+                    # Exactly equal
+                    ee.Filter.equals('.geo', valid_feature.geometry())
                 )
             )
         )
-    ))
+    )
+    )
     return ee.Image(image.set('combined_polygons', combined_polygons))
