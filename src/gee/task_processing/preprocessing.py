@@ -1,14 +1,16 @@
 import ee
 from src.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
+from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 
 
-def preprocess_imagery(image_collection: ee.ImageCollection, time_zone: str, aoi: ee.Geometry) -> ee.ImageCollection:
+def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, metadata: GeeTaskProcessingMetadata) -> ee.ImageCollection:
     image_collection = remove_unused_bands(image_collection)
     image_collection = get_clipped_collection(image_collection, aoi)
     image_collection = get_mosaicked_by_day_collection(
-        image_collection, time_zone)
+        image_collection, metadata.time_zone)
     image_collection = mask_out_clouds_and_cloud_shadows_for_collection(
         image_collection)
+    image_collection = add_metadata(image_collection, metadata)
     return image_collection
 
 
@@ -76,3 +78,14 @@ def mask_out_clouds_and_cloud_shadows(image: ee.Image) -> ee.Image:
 
     # combine masks and mask out clouds and shadows
     return image.updateMask(combined_mask.Not())
+
+
+def add_metadata(image_collection: ee.ImageCollection, metadata) -> ee.ImageCollection:
+    image_collection = image_collection.map(
+        lambda image: image.set(
+            "process_id", metadata.process_id,
+            "user_id", metadata.user_id,
+            "aoi_id", metadata.aoi_id,
+            "prepared_at", metadata.prepared_at,
+            "time_zone", metadata.time_zone))
+    return image_collection

@@ -19,10 +19,10 @@ def add_ndvi(image):
 def generate_valid_area_polygons(image_collection: ee.ImageCollection, aoi: ee.Geometry) -> ee.ImageCollection:
 
     def valid_areas_to_polygons(image):
-        return image.mask().gt(0).selfMask().toInt().reduceToVectors(
+        return image.select("B4").mask().gt(0).selfMask().toInt().reduceToVectors(
             geometry=aoi,
             geometryType='polygon',
-            reducer=ee.Reducer.count(),
+            reducer=ee.Reducer.countEvery(),
             scale=10,
             bestEffort=True
         )
@@ -37,13 +37,19 @@ def generate_valid_area_polygons(image_collection: ee.ImageCollection, aoi: ee.G
 def generate_ndvi_polygons(image_collection: ee.ImageCollection, aoi: ee.Geometry) -> ee.ImageCollection:
 
     def ndvi_areas_to_polygons(image):
-        return image.select('NDVI').gte(0.6).reduceToVectors(
+        vectors = image.select('NDVI').gte(0.6).reduceToVectors(
             geometryType='polygon',
             geometry=aoi,
-            reducer=ee.Reducer.count(),
+            reducer=ee.Reducer.countEvery(),
             scale=10,
             bestEffort=True
         )
+
+        simplified_vectors = vectors.map(
+            lambda feature: feature.simplify(
+                ee.ErrorMargin(100, 'meters'))  # 1 meter simplification
+        )
+        return simplified_vectors
 
     def set_polygons(image):
         return image.set('ndvi_polygons', ndvi_areas_to_polygons(image))
@@ -72,3 +78,8 @@ def combine_ndvi_and_valid_polygons(image: ee.Image) -> ee.Image:
     )
     )
     return ee.Image(image.set('combined_polygons', combined_polygons))
+
+
+def clean_geometry(feature):
+    # 1 meter error Tollerance
+    return feature.setGeometry(feature.geometry().simplify(ee.ErrorMargin(1, 'meters')))
