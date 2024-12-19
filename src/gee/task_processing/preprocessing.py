@@ -15,7 +15,7 @@ def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, m
 
 
 def remove_unused_bands(image_collection: ee.ImageCollection):
-    return image_collection.select("SCL", "B8", "B4")
+    return image_collection.select(["SCL", "B8", "B4"])
 
 
 def get_clipped_collection(image_collection: ee.ImageCollection, aoi: ee.Geometry):

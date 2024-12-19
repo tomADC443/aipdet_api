@@ -1,15 +1,12 @@
 import ee
 from src.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
+from src.gee.task_processing.constants import P
 
 
 def prepare_export(image_collection: ee.ImageCollection) -> ee.FeatureCollection:
     # Flatten the ImageCollection into a FeatureCollection
     flattened_feature_collection = flatten_image_collection(image_collection)
-
-    # Prepare the FeatureCollection for export
-    prepared_feature_collection = prepare_for_export(
-        flattened_feature_collection)
-    return prepared_feature_collection
+    return flattened_feature_collection
 
 
 def flatten_image_collection(image_collection):
@@ -30,13 +27,7 @@ def add_data_to_feature(image):
         # .set('utc_capture_start', ee.Date(image.get('system:time_start')))
         # .set('utc_capture_end', ee.Date(image.get('system:time_end')))
         .set(DAY_ONLY_FEATURE_LABEL, image.get(DAY_ONLY_FEATURE_LABEL))
-        .set('ndvi_polygons', ee.Geometry.MultiPolygon(
-            ee.FeatureCollection(feature.get(
-                'ndvi_polygons')).geometry().geometries()))
+        .set(P['ndvi_multipolygons'], feature.get(P['ndvi_multipolygons']))
     )
 
     return updated_combined_polygons
-
-
-def prepare_for_export(feature_collection):
-    return feature_collection.select(['geometry', 'ndvi_polygons', 'image_id'])
