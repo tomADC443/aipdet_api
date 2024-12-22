@@ -6,10 +6,10 @@ from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 from src.aoi.router import aoi_router
 from src.task.router import task_router
-from src.gee.task_processing.main import start_task_process
+from src.gee.task_processing._00_main import start_task_process
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from shapely.geometry import Polygon
-from src.gee.schemas import GeoJSONPolygonFeature
+
 import json
 # Creates app instance
 app = FastAPI()
@@ -83,6 +83,7 @@ def shutdown_event():
 
 @app.get("/test/gee")
 def run_gee_task():
+
     aoi = json.loads(
         "{\"type\":\"Feature\",\"properties\":{},\"geometry\":{\"coordinates\":[[[27.85666256350123,-25.73526101250701],[27.856568105989453,-25.737749836944474],[27.860682574849562,-25.737826769838705],[27.860671019950587,-25.735313853089494],[27.85666256350123,-25.73526101250701]]],\"type\":\"Polygon\"}}"
     )

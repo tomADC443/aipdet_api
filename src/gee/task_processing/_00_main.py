@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
 from src.gee.task_processing.constants import NUMBER_OF_DAYS_TEMPORAL_MAX
 from src.gee.auth import authenticate
-from src.gee.task_processing.preprocessing import preprocess_imagery
+from src.gee.task_processing._01_preprocessing import preprocess_imagery
 from shapely.geometry import Polygon
 from src.gee.task_processing.image_retrieval import get_imagery
 from src.gee.task_processing.utils import get_time_zone_of_center_point
-from src.gee.task_processing.processing import process_collection
-from src.gee.task_processing.prepare_export import prepare_export
-from src.gee.task_processing.export import start_export
+from src.gee.task_processing._02_processing import process_collection
+from src.gee.task_processing._03_prepare_export import prepare_export
+from src.gee.task_processing._04_export import start_export
 import ee
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 
@@ -36,10 +36,11 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
     preprocessed_collection = preprocess_imagery(
         image_collection, aoi, metadata)
     # 4. Value derivation
-    processed_collection = process_collection(preprocessed_collection, aoi)
+
+    feature_collection = process_collection(preprocessed_collection, aoi)
 
     # 5. Prepare data export
-    featureCollection = prepare_export(processed_collection)
+    featureCollection = prepare_export(feature_collection)
 
     # 6. Export data
     start_export(featureCollection)
