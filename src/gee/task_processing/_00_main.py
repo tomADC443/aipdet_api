@@ -24,7 +24,8 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
     """
 
     coordinates = list(shapely_aoi_polygon.exterior.coords)
-    end_date = datetime.now()
+    # end_date = datetime.now()
+    end_date = datetime.strptime("27.11.24", "%d.%m.%y")
     start_date = end_date - timedelta(days=NUMBER_OF_DAYS_TEMPORAL_MAX)
     metadata.time_zone = get_time_zone_of_center_point(shapely_aoi_polygon)
     # 1. Initialization - From here on all calculations run on GEE Servers, no local code allowed
@@ -37,7 +38,8 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
         image_collection, aoi, metadata)
     # 4. Value derivation
 
-    feature_collection = process_collection(preprocessed_collection, aoi)
+    feature_collection = process_collection(
+        preprocessed_collection, aoi)
 
     # 5. Prepare data export
     featureCollection = prepare_export(feature_collection)
