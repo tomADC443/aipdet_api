@@ -15,7 +15,7 @@ def process_collection(image_collection: ee.ImageCollection,  aoi: ee.Geometry) 
 
     def value_derivation(image: ee.Image) -> ee.FeatureCollection:
 
-        valid_polygon_feature_collection = image.mask().unmask(0).gt(0).reduceToVectors(
+        valid_polygon_feature_collection = image.mask().updateMask(image.mask()).gt(0).reduceToVectors(
             geometry=aoi,
             geometryType='polygon',
             reducer=ee.Reducer.count(),
@@ -39,7 +39,7 @@ def process_collection(image_collection: ee.ImageCollection,  aoi: ee.Geometry) 
 
         def set_ndvi_area_inside_polygon(feature: ee.Feature) -> ee.Feature:
 
-            ndvi_vectors = image.select('NDVI_GT_07').eq(1).reduceToVectors(
+            ndvi_vectors = image.select("NDVI_GT_07").mask(image.select("NDVI_GT_07").eq(1)).reduceToVectors(
                 geometry=feature.geometry(),
                 geometryType='polygon',
                 reducer=ee.Reducer.countEvery(),
