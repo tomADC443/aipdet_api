@@ -10,6 +10,8 @@ DAY_ONLY_FEATURE_LABEL = "reduced_local_day"
 P = {
     "ndvi_polygons": "ndvi_polygons",
     "image_id": "image_id",
+    "process_id": "process_id",
+    "water_hyacinth_classification": "water_hyacinth_classification",
 }
 
 B = {
