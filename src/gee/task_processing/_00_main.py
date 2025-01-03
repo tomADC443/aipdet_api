@@ -42,7 +42,7 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
         preprocessed_collection, aoi)
 
     # 5. Prepare data export
-    featureCollection = prepare_export(feature_collection)
+    featureCollection = prepare_export(feature_collection, metadata)
 
     # 6. Export data
     start_export(featureCollection)
