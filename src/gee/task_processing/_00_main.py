@@ -36,7 +36,7 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
     # 3. Preprocessing
     preprocessed_collection = preprocess_imagery(
         image_collection, aoi, metadata)
-    # 4. Value derivation
+    # 4. Value derivation (Processing)
 
     feature_collection = process_collection(
         preprocessed_collection, aoi)
