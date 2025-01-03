@@ -2,6 +2,7 @@ import ee
 # P= Property B= Band S= Settings
 from src.gee.task_processing.constants import P, B, S
 from src.gee.task_processing.utils import calculate_masked_percentage
+from src.gee.task_processing.water_hyacinth_classification.main import classify_water_hyacinth
 
 
 def process_collection(image_collection: ee.ImageCollection,  aoi: ee.Geometry) -> ee.FeatureCollection:
@@ -23,7 +24,7 @@ def process_collection(image_collection: ee.ImageCollection,  aoi: ee.Geometry) 
             scale=S["SENTINEL2_SCALE"],  # type: ignore
             bestEffort=False,
             labelProperty=None,
-            eightConnected=False,
+            eightConnected=True,
         )
 
         valid_polygon_feature_collection = valid_polygon_feature_collection.map(
@@ -48,7 +49,7 @@ def process_collection(image_collection: ee.ImageCollection,  aoi: ee.Geometry) 
                 scale=S["SENTINEL2_SCALE"],
                 bestEffort=False,
                 labelProperty=None,
-                eightConnected=False,
+                eightConnected=True,
             )
             ndvi_vectors = ndvi_vectors.map(
                 lambda feature: feature.simplify(ee.ErrorMargin(
@@ -67,7 +68,11 @@ def process_collection(image_collection: ee.ImageCollection,  aoi: ee.Geometry) 
 
             return feature
 
-        return valid_polygon_feature_collection.map(set_ndvi_area_inside_polygon)
+        valid_ndvi_feature_collection = valid_polygon_feature_collection.map(
+            set_ndvi_area_inside_polygon)
+        valid_ndvi_classified_feature_collection = classify_water_hyacinth(
+            image, valid_ndvi_feature_collection)
+        return valid_ndvi_classified_feature_collection
 
     # Add bands to the image collection
     image_collection = image_collection.map(add_bands)
