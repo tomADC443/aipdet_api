@@ -3,7 +3,7 @@ from src.gee.task_processing.constants import NUMBER_OF_DAYS_TEMPORAL_MAX
 from src.gee.auth import authenticate
 from src.gee.task_processing._01_preprocessing import preprocess_imagery
 from shapely.geometry import Polygon
-from src.gee.task_processing.image_retrieval import get_imagery
+from src.gee.task_processing.image_retrieval import get_imagery, get_date_ranges
 from src.gee.task_processing.utils import get_time_zone_of_center_point
 from src.gee.task_processing._02_processing import process_collection
 from src.gee.task_processing._03_prepare_export import prepare_export
@@ -25,26 +25,33 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
 
     coordinates = list(shapely_aoi_polygon.exterior.coords)
     # end_date = datetime.now()
-    end_date = datetime.strptime("27.11.24", "%d.%m.%y")
+    end_date = datetime.strptime("27.05.24", "%d.%m.%y")
     start_date = end_date - timedelta(days=NUMBER_OF_DAYS_TEMPORAL_MAX)
     metadata.time_zone = get_time_zone_of_center_point(shapely_aoi_polygon)
     # 1. Initialization - From here on all calculations run on GEE Servers, no local code allowed
     authenticate()
+
     aoi = ee.Geometry.Polygon(coordinates)
-    # 2. Get Imagery
-    image_collection = get_imagery(aoi, start_date, end_date)
-    # 3. Preprocessing
-    preprocessed_collection = preprocess_imagery(
-        image_collection, aoi, metadata)
-    # 4. Value derivation (Processing)
+    image_ranges = get_date_ranges(
+        aoi, int(start_date.timestamp() * 1000), int(end_date.timestamp() * 1000), timezone=metadata.time_zone)
+    print(metadata.time_zone)
+    for range in image_ranges:
 
-    feature_collection = process_collection(
-        preprocessed_collection, aoi)
+        # 2. Get Imagery
+        image_collection = get_imagery(
+            aoi, range["start_date"], range["end_date"])
+        # 3. Preprocessing
+        preprocessed_collection = preprocess_imagery(
+            image_collection, aoi, metadata)
+        # 4. Value derivation (Processing)
 
-    # 5. Prepare data export
-    featureCollection = prepare_export(feature_collection, metadata)
+        feature_collection = process_collection(
+            preprocessed_collection, aoi)
 
-    # 6. Export data
-    start_export(featureCollection)
-    # Perform processing (replace this with your actual logic)
+        # 5. Prepare data export
+        featureCollection = prepare_export(feature_collection, metadata)
+
+        # 6. Export data
+        start_export(featureCollection)
+        # Perform processing (replace this with your actual logic)
     return "Polygon input is valid and processed."
