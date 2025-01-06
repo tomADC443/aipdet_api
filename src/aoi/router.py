@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from src.database import get_db  # Database dependency
 from src.aoi.models import AOI
-from src.aoi.schemas import AOICreationRequest, AoiGetResponse
+from src.aoi.schemas import AOICreationRequest, AoiGetResponse, AOIDeletionRequest
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 
@@ -60,3 +60,44 @@ def get_aois(db: Session = Depends(get_db), current_user: dict = Depends(get_cur
         } for aoi in aoi_query_result
     ]
     return {"aois": responseData}
+
+
+@ login_required
+@ aoi_router.delete("")
+def delete_aois(data: AOIDeletionRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+
+    user_id = current_user['sub']
+    aoi_id = data.id
+    """
+    Delete an AOI for a specific user.
+    Validates ownership and handles the deletion process.
+    """
+    try:
+        result = db.execute(
+            select(AOI)
+            .where(AOI.id == aoi_id)
+            .where(AOI.user_id == user_id)
+        ).scalars().first()
+        print(result)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="AOI not found or you don't have permission to delete it."
+            )
+
+        # Delete the AOI
+        db.delete(result)
+        print("is gelöscht")
+        db.commit()
+        print("is commited")
+        return {
+            "message": "AOI successfully deleted.",
+            "id": aoi_id
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

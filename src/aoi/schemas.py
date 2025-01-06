@@ -1,22 +1,30 @@
 from typing import List
 from pydantic import BaseModel, Field
-from pydantic_geojson import FeatureModel
+from pydantic_geojson import FeatureModel  # type: ignore
 
 
 class AOICreationRequest(BaseModel):
     name: str = Field(
         ..., min_length=1, max_length=100,
-        example="My Area of Interest",
+        examples=["My Area of Interest"],
         description="The name of the AOI (Area of Interest)."
     )
     description: str = Field(
         None, max_length=500,
-        example="This is a sample area of interest for mapping.",
+        examples=["This is a sample area of interest for mapping."],
         description="An optional description of the AOI."
     )
     geometry: FeatureModel = Field(
         ...,
         description="The geometry of the AOI as a GeoJSON Feature object."
+    )
+
+
+class AOIDeletionRequest(BaseModel):
+    id: str = Field(
+        ..., min_length=1, max_length=100,
+        examples=["987987-9879"],
+        description="The of the AOI (Area of Interest) that should be deleted."
     )
 
 
