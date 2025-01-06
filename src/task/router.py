@@ -1,10 +1,8 @@
-
-import json
-from src.task.schemas import TaskCreationRequest
+from src.task.schemas import TaskCreationRequest, TaskDeletionRequest
 from src.dependencies import get_current_user, login_required
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select
 from src.database import get_db
 from src.task.models import Task
 from src.task.constants import Task_Status
@@ -17,7 +15,47 @@ task_router = APIRouter()
 
 
 @login_required
-@task_router.post("")
+@task_router.delete("")
+def soft_delete_task(data: TaskDeletionRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+
+    user_id = current_user['sub']
+    task = db.execute(
+        select(Task).where(Task.user_id == user_id).where(Task.id == data.id)).scalars().first()
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found or you don't have permission to delete it."
+        )
+
+    task.is_deleted = True  # type: ignore
+    db.commit()
+    return
+
+
+@login_required
+@task_router.get("")
+def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+
+    user_id = current_user['sub']
+    tasks = db.execute(
+        select(Task).where(Task.user_id == user_id)).scalars().all()
+
+    responseData = [
+        {
+            "id": str(task.id),
+            "name": task.name,
+            "status": task.status,
+            "createdAt": int(task.created_at.timestamp()),
+            "isPublic": task.is_public,
+
+        } for task in tasks
+    ]
+    return responseData
+
+
+@ login_required
+@ task_router.post("")
 def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """
         Handles Task creation requests.
@@ -56,7 +94,8 @@ def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db:
         background_task.add_task(start_task_process, aoi_polygon, metadata)
         return JSONResponse(
             status_code=200,
-            content={"message": "Task created successfully. Processing started."}
+            content={
+                "message": "Task created successfully. Processing started."}
         )
 
     except Exception as e:
