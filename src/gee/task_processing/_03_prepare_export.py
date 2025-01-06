@@ -7,6 +7,6 @@ from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 def prepare_export(featureCollection: ee.FeatureCollection, metadata: GeeTaskProcessingMetadata) -> ee.FeatureCollection:
 
     featureCollection = featureCollection.map(
-        lambda feature: feature.set(P["process_id"], metadata.process_id)
+        lambda feature: feature.set(P["process_id"], metadata.task_id)
     )
     return featureCollection
