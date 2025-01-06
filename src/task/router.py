@@ -39,7 +39,7 @@ def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
 
     user_id = current_user['sub']
     tasks = db.execute(
-        select(Task).where(Task.user_id == user_id)).scalars().all()
+        select(Task).where(Task.user_id == user_id).where(Task.is_deleted == False)).scalars().all()
 
     responseData = [
         {
