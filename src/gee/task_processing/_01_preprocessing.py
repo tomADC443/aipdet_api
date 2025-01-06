@@ -3,16 +3,33 @@ from src.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 
 
-def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, metadata: GeeTaskProcessingMetadata) -> ee.ImageCollection:
+def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, metadata: GeeTaskProcessingMetadata) -> ee.Image:
 
-    image_collection = mask_out_clouds_and_cloud_shadows_for_collection(
-        image_collection)
+    # Add intersection percentage
+    # def add_intersection(image):
+    #     intersection = image.geometry().intersection(aoi, 1)
+    #     return image.set('intersection_area', intersection.area())
 
-    return image_collection
+    # image_collection = image_collection.map(add_intersection)
 
+    # # Filter out images with minimal intersection
+    # image_collection = image_collection.filter(
+    #     ee.Filter.gt('intersection_area', 0))
 
-def mask_out_clouds_and_cloud_shadows_for_collection(image: ee.ImageCollection) -> ee.ImageCollection:
-    return image.map(mask_out_clouds_and_cloud_shadows)
+    def remove_unused_bands(image_collection: ee.ImageCollection):
+        return image_collection.select("SCL", "B8", "B4")
+
+    def get_clipped_collection(image_collection: ee.ImageCollection, aoi: ee.Geometry):
+        return image_collection.map(lambda img: img.clip(aoi))
+
+    # image_collection = remove_unused_bands(image_collection)
+    # image_collection = get_clipped_collection(image_collection, aoi)
+
+    # image = image_collection.mosaic()
+
+    image = mask_out_clouds_and_cloud_shadows(image_collection.first())
+
+    return image
 
 
 def mask_out_clouds_and_cloud_shadows(image: ee.Image) -> ee.Image:
