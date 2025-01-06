@@ -12,3 +12,6 @@ jwt
 pydantic-geojson
 timezonefinder
 shapely
+types-shapely # for mypy (dev only)
+types-pytz
+pytz
