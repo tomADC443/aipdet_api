@@ -27,13 +27,12 @@ def classify_water_hyacinth(image: ee.Image, valid_polygon_feature_collection: e
         )
 
         simplified_vectors = classified_water_hyacinth_collection.map(
-            lambda feature: feature.buffer(10).simplify(ee.ErrorMargin(
+            lambda feature: feature.buffer(5).simplify(ee.ErrorMargin(
                 # type: ignore
 
-
-                5, S["TOLERANCE_UNIT"]))  # type: ignore
-            .buffer(-10).simplify(ee.ErrorMargin(
-                20, S["TOLERANCE_UNIT"])).dissolve()  # type: ignore
+                6, S["TOLERANCE_UNIT"]))  # type: ignore
+            .buffer(-4).simplify(ee.ErrorMargin(
+                15, S["TOLERANCE_UNIT"])).dissolve()  # type: ignore
         )
 
         def enforce_polygon(feature: ee.Feature) -> ee.Feature:
