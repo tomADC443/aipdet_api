@@ -23,7 +23,9 @@ origins = [
     "127.0.0.1:61179",
     "127.0.0.1:61235",
     "127.0.0.1:60496",
-    "127.0.0.1:60529"
+    "127.0.0.1:60529",
+    "127.0.0.1:64307",
+    "127.0.0.1:64376"
 ]
 
 app.add_middleware(
@@ -31,7 +33,7 @@ app.add_middleware(
     allow_origins=origins,  # Specify frontend origin
     allow_credentials=True,  # Allow cookies and credentials if needed
     # Allow all methods (GET, POST, etc.)
-    allow_methods=["OPTIONS", "GET", "POST"],
+    allow_methods=["OPTIONS", "GET", "POST", "DELETE"],
     allow_headers=["*"],  # Allow all headers
 )
 
