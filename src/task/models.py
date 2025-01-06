@@ -17,6 +17,7 @@ class Task(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     status = Column(Text, nullable=False)
     is_public = Column(Boolean, default=False, nullable=False)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     def __repr__(self):
         return f"<AOI(id={self.id}, user_id={self.user_id}, name={self.name}, created_at={self.created_at})>"
