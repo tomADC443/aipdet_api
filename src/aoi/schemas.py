@@ -24,7 +24,7 @@ class AOIDeletionRequest(BaseModel):
     id: str = Field(
         ..., min_length=1, max_length=100,
         examples=["987987-9879"],
-        description="The of the AOI (Area of Interest) that should be deleted."
+        description="The id of the AOI (Area of Interest) that should be deleted."
     )
 
 
