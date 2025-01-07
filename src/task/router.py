@@ -83,13 +83,14 @@ def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db:
                 content={"detail": "AOI not found."}
             )
 
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+
         aoi_polygon = Polygon(aoi.geometry['geometry']['coordinates'][0])
 
         metadata = GeeTaskProcessingMetadata(
             task_id=str(new_task.id), user_id=str(new_task.user_id), aoi_id=str(new_task.aoi_id))
-
-        db.add(new_task)
-        db.commit()
 
         background_task.add_task(start_task_process, aoi_polygon, metadata)
         return JSONResponse(
