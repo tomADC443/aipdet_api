@@ -10,22 +10,19 @@ from src.gee.task_processing._03_prepare_export import prepare_export
 from src.gee.task_processing._04_export import start_export
 import ee
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
+from src.gee.task_processing.monitoring import monitor_tasks
+from src.database import get_db
+from sqlalchemy import select
+from src.task.models import Task
+from src.task.constants import Task_Status
+from sqlalchemy.orm import Session
+from src.database import SessionLocal
 
 
-def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessingMetadata):
-    """
-    Function to process a GeoJSON Polygon input.
-
-    Args:
-        area_polygon_feature (dict): Input GeoJSON feature.
-
-    Returns:
-        str: Confirmation message.
-    """
+async def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessingMetadata):
 
     coordinates = list(shapely_aoi_polygon.exterior.coords)
-    # end_date = datetime.now()
-    end_date = datetime.strptime("27.05.24", "%d.%m.%y")
+    end_date = datetime.now()
     start_date = end_date - timedelta(days=NUMBER_OF_DAYS_TEMPORAL_MAX)
     metadata.time_zone = get_time_zone_of_center_point(shapely_aoi_polygon)
     # 1. Initialization - From here on all calculations run on GEE Servers, no local code allowed
@@ -35,6 +32,7 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
     image_ranges = get_date_ranges(
         aoi, int(start_date.timestamp() * 1000), int(end_date.timestamp() * 1000), timezone=metadata.time_zone)
     print(metadata.time_zone)
+    tasks = []
     for range in image_ranges:
 
         # 2. Get Imagery
@@ -52,6 +50,16 @@ def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProcessing
         featureCollection = prepare_export(feature_collection, metadata)
 
         # 6. Export data
-        start_export(featureCollection)
+        task = start_export(featureCollection, metadata)
+        tasks.append(task)
         # Perform processing (replace this with your actual logic)
-    return "Polygon input is valid and processed."
+
+    await monitor_tasks(tasks, job_id=metadata.task_id)
+    db: Session = SessionLocal()
+    # Update task status to completed
+    task = db.execute(
+        select(Task).where(Task.id == metadata.task_id)).scalar()
+    task.status = Task_Status.Successful.value
+    db.commit()
+    db.close()
+    return
