@@ -14,7 +14,7 @@ def get_imagery(
         ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
         .filterDate(start_date, end_date)
         .filterBounds(aoi)
-        .filter(ee.Filter.lte("CLOUDY_PIXEL_PERCENTAGE", 95))
+        .filter(ee.Filter.lte("CLOUDY_PIXEL_PERCENTAGE", 70))
     )
     return collection
 
