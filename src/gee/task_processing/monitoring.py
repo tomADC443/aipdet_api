@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def monitor_tasks(tasks, job_id):
-    check_minutes = [3, 5, 10, 15]
+    check_minutes = [3, 5, 10, 20, 30, 60]
     start_time = time.time()
 
     for check_point in check_minutes:
