@@ -9,7 +9,7 @@ from src.task.router import task_router
 from src.gee.task_processing._00_main import start_task_process
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from shapely.geometry import Polygon
-
+from src.report.router import report_router
 import json
 # Creates app instance
 app = FastAPI()
@@ -44,6 +44,8 @@ app.include_router(aoi_router, prefix="/api/aoi",
                    tags=["AOI - Area of Interest"])
 app.include_router(task_router, prefix="/api/task",
                    tags=["Task"])
+app.include_router(report_router, prefix="/api/report",
+                   tags=["Report"])
 
 # Initialize database models
 Base.metadata.create_all(bind=engine)

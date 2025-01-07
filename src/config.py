@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     RUNNING_ENV: str
     JWT_SECRET: str
     JWT_ALGORITHM: str
+    DATABASE_REPORT_TABLE: str
 
 
 @lru_cache()
