@@ -5,5 +5,5 @@ steps:
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/app/app', '.']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/app/app']
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     args: ['gcloud', 'run', 'deploy', 'app', '--image', 'europe-west1-docker.pkg.dev/$PROJECT_ID/app/app', '--platform', 'managed', '--region', 'europe-west1']
