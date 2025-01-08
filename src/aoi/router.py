@@ -3,11 +3,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from src.database import get_db  # Database dependency
 from src.aoi.models import AOI
-from src.aoi.schemas import AOICreationRequest, AoiGetResponse, AOIDeletionRequest
+from src.aoi.schemas import AOICreationRequest, AoiGetResponse, AOIDeletionRequest, aoi_id_parameter
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 
 aoi_router = APIRouter()
+aois_router = APIRouter()
 
 
 @login_required
@@ -44,7 +45,7 @@ def create_aoi(aoi: AOICreationRequest, db: Session = Depends(get_db), current_u
 
 
 @ login_required
-@ aoi_router.get("", response_model=AoiGetResponse)
+@ aois_router.get("", response_model=AoiGetResponse)
 def get_aois(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     user_id = current_user['sub']
     aoi_query = select(AOI).where(AOI.user_id == user_id)
@@ -101,3 +102,29 @@ def delete_aois(data: AOIDeletionRequest, db: Session = Depends(get_db), current
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+@ login_required
+@ aoi_router.get("")
+def get_aoi(
+        id: str = aoi_id_parameter,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(get_current_user)):
+
+    user_id = current_user['sub']
+    aoi_query = select(AOI).where(AOI.user_id == user_id).where(AOI.id == id)
+    aoi = db.execute(aoi_query).scalars().first()
+    if not aoi:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AOI not found."
+        )
+    responseData = {
+        "id": str(aoi.id),
+        "name": aoi.name,
+        "description": aoi.description,
+        "geometry": aoi.geometry,
+        "createdAt": int(aoi.created_at.timestamp()),
+    }
+
+    return {"aoi": responseData}

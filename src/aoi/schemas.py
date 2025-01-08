@@ -1,6 +1,7 @@
 from typing import List
 from pydantic import BaseModel, Field
 from pydantic_geojson import FeatureModel  # type: ignore
+from fastapi import Query
 
 
 class AOICreationRequest(BaseModel):
@@ -56,3 +57,13 @@ class AoiGetResponse(BaseModel):
         ...,
         description="A list of AOIs."
     )
+
+
+aoi_id_parameter = Query(
+    ...,
+    alias="id",
+    min_length=1,
+    max_length=100,
+    examples=["1-023948-9182374"],
+    description="Id of the aoi in question."
+)
