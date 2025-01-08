@@ -12,6 +12,7 @@ from shapely.geometry import Polygon
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from src.gee.task_processing._00_main import start_task_process
 task_router = APIRouter()
+tasks_router = APIRouter()
 
 
 @login_required
@@ -34,7 +35,7 @@ def soft_delete_task(data: TaskDeletionRequest, db: Session = Depends(get_db), c
 
 
 @login_required
-@task_router.get("")
+@tasks_router.get("")
 def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
 
     user_id = current_user['sub']
@@ -48,6 +49,7 @@ def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
             "status": task.status,
             "createdAt": int(task.created_at.timestamp()),
             "isPublic": task.is_public,
+            "aoiId": str(task.aoi_id),
 
         } for task in tasks
     ]
@@ -92,7 +94,11 @@ def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db:
         metadata = GeeTaskProcessingMetadata(
             task_id=str(new_task.id), user_id=str(new_task.user_id), aoi_id=str(new_task.aoi_id))
 
-        background_task.add_task(start_task_process, aoi_polygon, metadata)
+        async def process_task_wrapper():
+            await start_task_process(aoi_polygon, metadata)
+
+        background_task.add_task(process_task_wrapper)
+
         return JSONResponse(
             status_code=200,
             content={

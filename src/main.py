@@ -5,7 +5,9 @@ from src.user.router import user_router
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
 from src.aoi.router import aoi_router
+from src.aoi.router import aois_router
 from src.task.router import task_router
+from src.task.router import tasks_router
 from src.gee.task_processing._00_main import start_task_process
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from shapely.geometry import Polygon
@@ -42,7 +44,11 @@ app.include_router(user_router, prefix="/api/user",
                    tags=["User and Authentication"])
 app.include_router(aoi_router, prefix="/api/aoi",
                    tags=["AOI - Area of Interest"])
+app.include_router(aois_router, prefix="/api/aois",
+                   tags=["AOI - Area of Interest"])
 app.include_router(task_router, prefix="/api/task",
+                   tags=["Task"])
+app.include_router(tasks_router, prefix="/api/tasks",
                    tags=["Task"])
 app.include_router(report_router, prefix="/api/report",
                    tags=["Report"])
