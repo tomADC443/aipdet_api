@@ -1,7 +1,14 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from pydantic_geojson import FeatureModel  # type: ignore
 from fastapi import Query
+
+
+class CustomFeatureModel(FeatureModel):
+    properties: Optional[dict] = Field(
+        default=None,
+        description="Optional properties for the GeoJSON feature."
+    )  # type: ignore
 
 
 class AOICreationRequest(BaseModel):
@@ -15,7 +22,7 @@ class AOICreationRequest(BaseModel):
         examples=["This is a sample area of interest for mapping."],
         description="An optional description of the AOI."
     )
-    geometry: FeatureModel = Field(
+    geometry: CustomFeatureModel = Field(
         ...,
         description="The geometry of the AOI as a GeoJSON Feature object."
     )
@@ -46,7 +53,7 @@ class AOI(BaseModel):
         ...,
         description="The timestamp when the AOI was created."
     )
-    geometry: FeatureModel = Field(
+    geometry: CustomFeatureModel = Field(
         ...,
         description="The geometry of the AOI as a GeoJSON Feature object."
     )
