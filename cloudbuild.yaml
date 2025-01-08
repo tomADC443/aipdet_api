@@ -4,6 +4,6 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/app', '.']
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/app']
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/app/app']
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    args: ['run', 'deploy', 'app', '--image', 'gcr.io/$PROJECT_ID/app', '--platform', 'managed']
+    args: ['run', 'deploy', 'app', '--image', 'europe-west1-docker.pkg.dev/$PROJECT_ID/app/app', '--platform', 'managed']
