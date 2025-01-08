@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str
     DATABASE_REPORT_TABLE: str
+    AIPDET_FE_SA_GCP: str
+    AIPDET_BE_SA_GCP: str
+    GEE_SA_GCP: str
 
 
 @lru_cache()

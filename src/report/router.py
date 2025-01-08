@@ -9,7 +9,7 @@ from src.report.schemas import task_id_parameter
 from src.dependencies import get_current_user, login_required
 from sqlalchemy import select, or_
 from src.task.models import Task
-
+import json
 report_router = APIRouter()
 settings = get_settings()
 
@@ -28,8 +28,8 @@ def get_distinct_images_count(
     )
 
     try:
-        client = bigquery.Client.from_service_account_json(
-            'private-key-bigQuery-account.json'
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
         )
         query_job = client.query(query)
         result = query_job.result()
@@ -79,8 +79,8 @@ def get_ndvi_area_data(
         )
 
     try:
-        client = bigquery.Client.from_service_account_json(
-            'private-key-bigQuery-account.json'
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
         )
         query_job = client.query(query)
         result = query_job.result()

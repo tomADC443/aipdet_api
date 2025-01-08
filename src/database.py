@@ -3,13 +3,14 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from google.cloud.sql.connector import Connector, IPTypes
 from google.oauth2 import service_account
 import os
+import json
+from src.config import get_settings
 
-# Path to the service account key JSON
-SERVICE_ACCOUNT_KEY_PATH = "/path/to/service-account-key.json"
+settings = get_settings()
 
 # Initialize the Cloud SQL Python Connector
-connector = Connector(credentials=service_account.Credentials.from_service_account_file(
-    "./private-key-gcp.json"))
+connector = Connector(credentials=service_account.Credentials.from_service_account_info(
+    json.loads(settings.AIPDET_FE_SA_GCP)))
 
 
 def get_connection():
