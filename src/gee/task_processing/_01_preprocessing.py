@@ -25,7 +25,7 @@ def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, m
     # image_collection = remove_unused_bands(image_collection)
     # image_collection = get_clipped_collection(image_collection, aoi)
 
-    # image = image_collection.mosaic()
+    image = image_collection.mosaic()
 
     image = mask_out_clouds_and_cloud_shadows(image_collection.first())
 

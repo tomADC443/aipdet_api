@@ -1,6 +1,6 @@
 
 # Availability of Sentinel-2 imagery starts at 01.04.2017
-NUMBER_OF_DAYS_TEMPORAL_MAX = 1825  # 7 years back = 2555 days
+NUMBER_OF_DAYS_TEMPORAL_MAX = 1460  # 7 years back = 2555 days
 DAY_ONLY_FEATURE_LABEL = "reduced_local_day"
 
 
@@ -12,6 +12,8 @@ P = {
     "image_id": "image_id",
     "process_id": "process_id",
     "water_hyacinth_classification": "water_hyacinth_classification",
+    "utc_capture_start": "utc_capture_start",
+    "user_id": "user_id",
 }
 
 B = {

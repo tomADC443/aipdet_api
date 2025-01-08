@@ -11,7 +11,6 @@ from src.gee.task_processing._04_export import start_export
 import ee
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from src.gee.task_processing.monitoring import monitor_tasks
-from src.database import get_db
 from sqlalchemy import select
 from src.task.models import Task
 from src.task.constants import Task_Status
@@ -39,15 +38,16 @@ async def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProc
         image_collection = get_imagery(
             aoi, range["start_date"], range["end_date"])
         # 3. Preprocessing
-        preprocessed_collection = preprocess_imagery(
+        preprocessed_image = preprocess_imagery(
             image_collection, aoi, metadata)
         # 4. Value derivation (Processing)
 
         feature_collection = process_collection(
-            preprocessed_collection, aoi)
+            preprocessed_image, aoi)
 
         # 5. Prepare data export
-        featureCollection = prepare_export(feature_collection, metadata)
+        featureCollection = prepare_export(
+            feature_collection, metadata, preprocessed_image)
 
         # 6. Export data
         task = start_export(featureCollection, metadata)
