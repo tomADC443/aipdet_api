@@ -6,17 +6,19 @@ from src.database import get_db
 from src.config import get_settings
 from google.cloud import bigquery
 from src.report.schemas import task_id_parameter
+from src.dependencies import get_current_user, login_required
+
 
 report_router = APIRouter()
 settings = get_settings()
 
 
-# @login_required
+@login_required
 @report_router.get("/number-total-distinct-images")
-# , current_user: dict = Depends(get_current_user)):
 def get_distinct_images_count(
     task_id: str = task_id_parameter,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     query = (
         f'SELECT COUNT(DISTINCT image_id)\n'
