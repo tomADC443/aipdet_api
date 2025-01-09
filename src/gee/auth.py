@@ -11,7 +11,7 @@ def authenticate():
         service_account,
         key_data=base64.b64decode(
             settings.GEE_SA_GCP
-        ).decode("utf-8"),
+        ).decode("utf-8")
     )
     ee.Initialize(credentials)
 
@@ -25,7 +25,7 @@ def authenticate():
 #         config.ENVIRONMENT == Environment.DEVELOPMENT.value
 #         or config.ENVIRONMENT == Environment.PRODUCTION.value
 #     ):
-#         service_account = config.GOOGLE_EARTH_ENGINE_SERVICE_ACCOUNT_EMAIL
+#           = config.GOOGLE_EARTH_ENGINE_SERVICE_ACCOUNT_EMAIL
 #         credentials = ee.ServiceAccountCredentials(
 #             service_account,
 #             key_data=base64.b64decode(
