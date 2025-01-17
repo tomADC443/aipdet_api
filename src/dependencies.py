@@ -1,3 +1,4 @@
+from inspect import signature
 from fastapi import HTTPException, Request
 from jwt import ExpiredSignatureError, InvalidTokenError
 from functools import wraps
@@ -30,9 +31,13 @@ async def get_current_user(request: Request):
 
 
 def login_required(func):
+    sig = signature(func)
+    if 'current_user' not in sig.parameters:
+        raise TypeError(
+            f"Function {func.__name__} missing required 'current_user' parameter")
+
     @wraps(func)
-    async def wrapper(*args, **kwargs):
-        # Assume `get_current_user` is injected elsewhere
+    def wrapper(*args, **kwargs):
         if not kwargs.get('current_user'):
             raise HTTPException(
                 status_code=401, detail="Authentication required")
