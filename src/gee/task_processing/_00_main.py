@@ -12,7 +12,7 @@ import ee
 from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from src.gee.task_processing.monitoring import monitor_tasks
 from sqlalchemy import select
-from src.task.models import Task
+from src.task.models import Task, TaskProcesses
 from src.task.constants import Task_Status
 from sqlalchemy.orm import Session
 from src.database import SessionLocal
@@ -50,16 +50,31 @@ async def start_task_process(shapely_aoi_polygon: Polygon, metadata: GeeTaskProc
             feature_collection, metadata, preprocessed_image)
 
         # 6. Export data
-        task = start_export(featureCollection, metadata)
-        tasks.append(task)
+        started_task = start_export(featureCollection, metadata)
+        tasks.append(started_task)
         # Perform processing (replace this with your actual logic)
 
-    await monitor_tasks(tasks, job_id=metadata.task_id)
+    task_processes = [
+        TaskProcesses(
+
+            task_id=metadata.task_id,
+            gee_task_id=task.status()["id"],
+            gee_current_status=task.status()["state"],
+            last_updated=datetime.now()
+        ) for task in tasks
+    ]
+
     db: Session = SessionLocal()
+    db.add_all(task_processes)
+    db.commit()
+
     # Update task status to completed
-    task = db.execute(
-        select(Task).where(Task.id == metadata.task_id)).scalar()
-    task.status = Task_Status.Successful.value
+    userTask = db.execute(select(Task).where(
+        Task.id == metadata.task_id)).scalar()
+    if userTask:
+        userTask.status = Task_Status.Processing.value  # type: ignore
+    else:
+        raise Exception("User task not found!" + metadata.task_id)
     db.commit()
     db.close()
     return
