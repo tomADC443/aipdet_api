@@ -1,8 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from google.cloud.sql.connector import Connector, IPTypes
+from google.cloud.sql.connector import Connector
 from google.oauth2 import service_account
-import os
 import json
 from src.config import get_settings
 
