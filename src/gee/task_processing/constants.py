@@ -1,4 +1,4 @@
-
+from enum import Enum
 # Availability of Sentinel-2 imagery starts at 01.04.2017
 NUMBER_OF_DAYS_TEMPORAL_MAX = 1460  # 7 years back = 2555 days
 DAY_ONLY_FEATURE_LABEL = "reduced_local_day"
@@ -29,3 +29,8 @@ S = {
     "SENTINEL2_SCALE": 10,
 
 }
+
+
+class FORCED_ACTION(Enum):
+    Cancelled_to_many_EECU = "Cancelled_to_many_EECU"
+    Cancelled_user_task_to_long_ago = "Cancelled_user_task_to_long_ago"
