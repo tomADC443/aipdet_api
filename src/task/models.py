@@ -24,7 +24,7 @@ class Task(Base):
         return f"<AOI(id={self.id}, user_id={self.user_id}, name={self.name}, created_at={self.created_at})>"
 
 
-class TaskProcess(Base):
+class TaskProcesses(Base):
 
     __tablename__ = "task_processes"
 
@@ -39,6 +39,10 @@ class TaskProcess(Base):
         primary_key=True,
         nullable=False
     )
+
+    gee_current_status = Column(Text, nullable=True)
+    forced_action_taken = Column(Text, nullable=True)
+    last_updated = Column(DateTime, nullable=True)
 
     def __repr__(self):
         return f"<TaskProcess(task_id={self.task_id}, gee_task_id={self.gee_task_id})>"
