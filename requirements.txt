@@ -88,3 +88,8 @@ uvloop==0.21.0
 watchfiles==1.0.3
 websockets==14.1
 yarl==1.18.3
+pyproj==3.7.0
+geopandas==1.0.1
+pandas==2.2.3 
+pyogrio==0.10.0 
+pyarrow==19.0.0
