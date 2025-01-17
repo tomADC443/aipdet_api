@@ -1,6 +1,6 @@
 import ee
-from src.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
-from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
+from src.processing_pipeline.gee.constants import DAY_ONLY_FEATURE_LABEL
+from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
 
 
 def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, metadata: GeeTaskProcessingMetadata) -> ee.Image:
