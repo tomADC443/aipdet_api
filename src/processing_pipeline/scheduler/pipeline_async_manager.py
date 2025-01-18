@@ -2,11 +2,15 @@ from sqlalchemy.orm import Session
 from src.database import SessionLocal
 from sqlalchemy import select, and_, update
 from src.task.models import Task, TaskProcesses
+from src.aoi.models import AOI
 import datetime
 from src.processing_pipeline.gee.task_processing.constants import FORCED_ACTION
 from src.processing_pipeline.gee.auth import authenticate
 import ee
 from src.task.constants import Task_Status, final_states
+from src.processing_pipeline.spatial_analysis.main import get_spatial_analysis
+import json
+from shapely.geometry import Polygon
 
 
 def pipeline_organizer():
@@ -67,16 +71,28 @@ def cleanup_tasks():
             ["SUCCEEDED", "FAILED", "CANCELLED"])
     ).subquery()
 
-    ready_tasks = db.execute(
-        select(Task)
+    ready_task_ids = db.execute(
+        select(Task.id)
         .where(
             and_(
                 Task.status.notin_(["Successful", "Failed", ]),
                 Task.id.notin_(task_process_check),
             )
         )
-    )
-    for task in ready_tasks:
+    ).all()
+
+    for task_id in ready_task_ids:
+        # get polygon geometry for task:
+        geometry = db.execute(
+            select(AOI.geometry).where(AOI.id == task_id)).scalar().first()
+        db.commit()
+        aoi = json.loads(geometry)
+        aoi_polygon = Polygon(aoi['geometry']['coordinates'][0])
+        get_spatial_analysis(task_id, aoi_polygon)
+        # Update task status
+        db.execute(update(Task).where(Task.id == task_id).values(
+            status=Task_Status.Successful.value))
+        db.commit()
 
     db.commit()
     db.close()
