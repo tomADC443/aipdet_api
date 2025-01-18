@@ -1,6 +1,6 @@
 import ee
-from src.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
-from src.gee.task_processing.constants import P
+from src.processing_pipeline.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
+from src.processing_pipeline.gee.task_processing.constants import P
 from typing import Any
 
 

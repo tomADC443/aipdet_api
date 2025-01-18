@@ -1,8 +1,8 @@
 import ee
 from timezonefinder import TimezoneFinder
 from shapely.geometry import Polygon
-from src.gee.task_processing.exceptions import TimezoneRetrievalError
-from src.gee.task_processing.constants import S
+from src.processing_pipeline.gee.task_processing.exceptions import TimezoneRetrievalError
+from src.processing_pipeline.gee.task_processing.constants import S
 tf = TimezoneFinder()
 
 

@@ -3,8 +3,8 @@ from src.database import SessionLocal
 from sqlalchemy import select, and_, update
 from src.task.models import Task, TaskProcesses
 import datetime
-from src.gee.task_processing.constants import FORCED_ACTION
-from src.gee.auth import authenticate
+from src.processing_pipeline.gee.task_processing.constants import FORCED_ACTION
+from src.processing_pipeline.gee.auth import authenticate
 import ee
 from src.task.constants import Task_Status, final_states
 

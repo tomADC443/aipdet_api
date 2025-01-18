@@ -1,7 +1,7 @@
 import ee
-from src.gee.task_processing.water_hyacinth_classification.train import train_classifier
-from src.gee.task_processing.water_hyacinth_classification.classify import classify_water_hyacinth_image
-from src.gee.task_processing.constants import P, S
+from src.processing_pipeline.gee.water_hyacinth_classification.train import train_classifier
+from src.processing_pipeline.gee.water_hyacinth_classification.classify import classify_water_hyacinth_image
+from src.processing_pipeline.gee.task_processing.constants import P, S
 
 
 def classify_water_hyacinth(image: ee.Image, valid_polygon_feature_collection: ee.FeatureCollection) -> ee.FeatureCollection:

@@ -9,8 +9,8 @@ from src.task.constants import Task_Status
 from fastapi.responses import JSONResponse
 from src.aoi.models import AOI
 from shapely.geometry import Polygon
-from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
-from src.gee.task_processing._00_main import start_task_process
+from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
+from src.processing_pipeline.gee.task_processing.main import start_task_process
 task_router = APIRouter()
 tasks_router = APIRouter()
 

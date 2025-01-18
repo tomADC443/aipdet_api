@@ -1,8 +1,8 @@
 import ee
 # P= Property B= Band S= Settings
-from src.gee.task_processing.constants import P, B, S
-from src.gee.task_processing.utils import calculate_masked_percentage
-from src.gee.task_processing.water_hyacinth_classification.main import classify_water_hyacinth
+from src.processing_pipeline.gee.task_processing.constants import P, B, S
+from src.processing_pipeline.gee.task_processing.utils import calculate_masked_percentage
+from src.processing_pipeline.gee.water_hyacinth_classification.main import classify_water_hyacinth
 
 
 def image_to_vector_polygons(image: ee.Image, aoi: ee.Geometry, reducer: ee.Reducer) -> ee.FeatureCollection:

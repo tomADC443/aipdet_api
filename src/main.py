@@ -8,8 +8,8 @@ from src.aoi.router import aoi_router
 from src.aoi.router import aois_router
 from src.task.router import task_router
 from src.task.router import tasks_router
-from src.gee.task_processing._00_main import start_task_process
-from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
+from src.processing_pipeline.gee.task_processing.main import start_task_process
+from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from shapely.geometry import Polygon
 from src.report.router import report_router
 import json

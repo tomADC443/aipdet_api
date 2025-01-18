@@ -1,7 +1,7 @@
 import ee
-from src.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
-from src.gee.task_processing.constants import P
-from src.gee.task_processing.metadata import GeeTaskProcessingMetadata
+from src.processing_pipeline.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
+from src.processing_pipeline.gee.task_processing.constants import P
+from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
 
 
 def prepare_export(featureCollection: ee.FeatureCollection, metadata: GeeTaskProcessingMetadata, image: ee.Image) -> ee.FeatureCollection:

@@ -1,5 +1,5 @@
 import ee
-from src.gee.task_processing.water_hyacinth_classification.statics import train_image_resource_id, bands, get_train_roi, get_other_class_data, get_water_hyacinth_data
+from src.processing_pipeline.gee.water_hyacinth_classification.statics import train_image_resource_id, bands, get_train_roi, get_other_class_data, get_water_hyacinth_data
 
 
 def train_classifier(classifier: ee.Classifier):

@@ -1,5 +1,5 @@
 import ee
-from src.processing_pipeline.gee.constants import DAY_ONLY_FEATURE_LABEL
+from src.processing_pipeline.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
 from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
 
 

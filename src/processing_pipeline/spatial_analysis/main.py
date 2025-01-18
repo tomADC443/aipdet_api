@@ -8,10 +8,10 @@ from src.dependencies import get_current_user, login_required
 from sqlalchemy import select, or_
 from src.task.models import Task
 import json
-from src.report.service import create_grid
+from src.processing_pipeline.spatial_analysis.create_grid import create_grid
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.validation import explain_validity
-from src.report.service import analyze_grid_observations
+from src.processing_pipeline.spatial_analysis.analyse_grid import analyze_grid_observations
 from typing import Dict
 
 report_router = APIRouter()
