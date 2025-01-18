@@ -13,8 +13,20 @@ from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessi
 from shapely.geometry import Polygon
 from src.report.router import report_router
 import json
+from src.processing_pipeline.scheduler.scheduler import start_scheduler, shutdown_scheduler
 # Creates app instance
 app = FastAPI()
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    shutdown_scheduler()
+
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler()
+
 
 # CORS configuration
 origins = [
