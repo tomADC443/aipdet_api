@@ -7,18 +7,12 @@ app = FastAPI()
 scheduler = BackgroundScheduler()
 
 
-def example_task():
-
-    print("HULULULULULULLULULULULULULULLULULUL")
-    # Your function call here
-
-
-@app.on_event("startup")
 def start_scheduler():
+    pipeline_organizer()
     scheduler.add_job(
-        example_task,
+        pipeline_organizer,
         trigger='cron',
-        minute='*/45',
+        minute='*/10',
         id="periodic_task",
     )
     scheduler.start()

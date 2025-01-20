@@ -40,7 +40,6 @@ def get_spatial_analysis(id: str, aoi_polygon: Polygon):
         area_data = []
 
         for row in result:
-            # print(row.valid_area[:100])
             oneRowData = {}
 
             if row.NDVI:
@@ -62,23 +61,18 @@ def get_spatial_analysis(id: str, aoi_polygon: Polygon):
             area_data.append(oneRowData)
 
     except Exception as e:
-        print(row.NDVI)
         print(e)
 
-    print("before grid")
     ndvi_areas = [data['NDVI'] for data in area_data]
     whc_areas = [data['WHC'] for data in area_data]
     observed_areas = [data['valid_area'] for data in area_data]
 
     grid_gdf = create_grid(aoi_polygon, cell_size=100)
-    print("after grid")
     analyzed_grid = analyze_grid_observations(
         grid_gdf, observed_areas, ndvi_areas, whc_areas)
-    print("after analysis")
     grid_gdf['process_id'] = 'someProcessId_1'
 
     upload_grid_to_bigquery(grid_gdf)
-    print("after upload")
     return analyzed_grid.to_json()
 
 
@@ -91,7 +85,6 @@ def extract_geometry(geom_dict: Dict) -> Polygon | MultiPolygon:
             for polygon_coords in coords_array:
                 polygon = Polygon(polygon_coords)
                 if not polygon.is_valid:
-                    print("Why invalid:", explain_validity(polygon))
                     polygon = polygon.buffer(0)
 
                 polygons.append(polygon)
@@ -101,14 +94,12 @@ def extract_geometry(geom_dict: Dict) -> Polygon | MultiPolygon:
         outer_ring = geom_dict['coordinates'][0]
 
         if len(geom_dict['coordinates']) > 1:
-            print("Holes detected!!")
             holes = geom_dict['coordinates'][1:]
 
         else:
             holes = None
         polygon = Polygon(outer_ring, holes)
         if not polygon.is_valid:
-            print("Why invalid:", explain_validity(polygon))
             polygon = polygon.buffer(0)
         return polygon
     else:

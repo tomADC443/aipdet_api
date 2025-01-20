@@ -32,5 +32,5 @@ S = {
 
 
 class FORCED_ACTION(Enum):
-    Cancelled_to_many_EECU = "Cancelled_to_many_EECU"
+    Cancelled_too_many_EECU = "Cancelled_too_many_EECU"
     Cancelled_user_task_to_long_ago = "Cancelled_user_task_to_long_ago"
