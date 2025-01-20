@@ -35,6 +35,7 @@ def pipeline_organizer():
                 TaskProcesses.gee_current_status != 'SUCCEEDED',
                 TaskProcesses.gee_current_status != 'FAILED',
                 TaskProcesses.gee_current_status != 'CANCELLED',
+                TaskProcesses.gee_current_status != 'COMPLETED'
             ))).scalars().all()
 
         # Check the latest status of the unfinished gee_tasks and update the task status (forcefully end the task if it consumes too much EECUs)
@@ -75,7 +76,7 @@ def start_spatial_analysis_on_tasks_if_ready():
 
     active_processes = (
         select(TaskProcesses.task_id)
-        .where(TaskProcesses.gee_current_status.notin_(["SUCCEEDED", "FAILED", "CANCELLED"]))
+        .where(TaskProcesses.gee_current_status.notin_(["SUCCEEDED", "FAILED", "CANCELLED", "COMPLETED"]))
         .distinct()
         .scalar_subquery()
     )
@@ -99,7 +100,7 @@ def start_spatial_analysis_on_tasks_if_ready():
         aoi = task_with_aoi[1]
         print("Task organizer - Spatial analysis started for task", task.id)
         aoi_polygon = Polygon(aoi['geometry']['coordinates'][0])
-        get_spatial_analysis(task, aoi_polygon)
+        get_spatial_analysis(str(task.id), aoi_polygon)
         # Update task status
         db.execute(update(Task).where(Task.id == task.id).values(
             status=Task_Status.Successful.value))
