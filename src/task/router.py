@@ -94,8 +94,9 @@ def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db:
         metadata = GeeTaskProcessingMetadata(
             task_id=str(new_task.id), user_id=str(new_task.user_id), aoi_id=str(new_task.aoi_id))
 
-        async def process_task_wrapper():
-            await start_task_process(aoi_polygon, metadata)
+        def process_task_wrapper():
+            import asyncio
+            asyncio.run(start_task_process(aoi_polygon, metadata))
 
         background_task.add_task(process_task_wrapper)
 
