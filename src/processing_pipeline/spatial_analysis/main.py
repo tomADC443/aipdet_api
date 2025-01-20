@@ -70,7 +70,7 @@ def get_spatial_analysis(id: str, aoi_polygon: Polygon):
     grid_gdf = create_grid(aoi_polygon, cell_size=100)
     analyzed_grid = analyze_grid_observations(
         grid_gdf, observed_areas, ndvi_areas, whc_areas)
-    grid_gdf['process_id'] = 'someProcessId_1'
+    grid_gdf['process_id'] = id
 
     upload_grid_to_bigquery(grid_gdf)
     return analyzed_grid.to_json()
