@@ -37,42 +37,31 @@ def get_spatial_analysis(id: str, aoi_polygon: Polygon):
         query_job = client.query(query)
         result = query_job.result()
 
-        area_data = []
-
+        ndvi_areas = []
+        whc_areas = []
+        observed_areas = []
         for row in result:
-            oneRowData = {}
 
             if row.NDVI:
                 ndvi_dict = json.loads(row.NDVI)
-                # extract_geometry(ndvi_dict)
-                oneRowData["NDVI"] = extract_geometry(ndvi_dict)
-            else:
-                oneRowData["NDVI"] = None
+                ndvi_areas.append(extract_geometry(ndvi_dict))
 
             if row.WHC:
                 whc_dict = json.loads(row.WHC)
-                # extract_geometry(ndvi_dict)
-                oneRowData["WHC"] = extract_geometry(whc_dict)
-            else:
-                oneRowData["WHC"] = None
+                whc_areas.append(extract_geometry(whc_dict))
 
             valid_area_dict = json.loads(row.valid_area)
-            oneRowData["valid_area"] = extract_geometry(valid_area_dict)
-            area_data.append(oneRowData)
+            observed_areas.append(extract_geometry(valid_area_dict))
 
     except Exception as e:
         print(e)
 
-    ndvi_areas = [data['NDVI'] for data in area_data]
-    whc_areas = [data['WHC'] for data in area_data]
-    observed_areas = [data['valid_area'] for data in area_data]
-
     grid_gdf = create_grid(aoi_polygon, cell_size=100)
     analyzed_grid = analyze_grid_observations(
         grid_gdf, observed_areas, ndvi_areas, whc_areas)
-    grid_gdf['process_id'] = id
+    analyzed_grid['process_id'] = id
 
-    upload_grid_to_bigquery(grid_gdf)
+    upload_grid_to_bigquery(analyzed_grid)
     return analyzed_grid.to_json()
 
 
