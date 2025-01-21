@@ -2,6 +2,7 @@ from pyproj import Transformer
 import numpy as np
 from shapely.geometry import box, Polygon, MultiPolygon
 from shapely.validation import make_valid
+from shapely.ops import transform
 import geopandas as gpd  # type: ignore
 from src.report.utils import get_utm_zone_from_WGS84
 from typing import List, Optional
@@ -10,82 +11,78 @@ from typing import List, Optional
 def analyze_grid_observations(
     grid_gdf: gpd.GeoDataFrame,
     observed_areas: List[Polygon | MultiPolygon],
-    ndvi_areas: List[Optional[Polygon | MultiPolygon]],
-    whc_areas: List[Optional[Polygon | MultiPolygon]]
+    ndvi_areas: List[Polygon | MultiPolygon],
+    whc_areas: List[Polygon | MultiPolygon]
 ) -> gpd.GeoDataFrame:
     """
-    Analyze satellite observations per grid cell using area summation.
+    Vectorized analysis of satellite observations per grid cell.
 
     Args:
         grid_gdf: GeoDataFrame containing grid cells
         observed_areas: List of observed area polygons
         ndvi_areas: List of NDVI area polygons (can contain None)
+        whc_areas: List of WHC area polygons (can contain None)
 
     Returns:
-        GeoDataFrame with columns:
-        - total_observed_area: Sum of all observed areas in the cell
-        - total_ndvi_area: Sum of all NDVI areas in the cell
-        - ndvi_score: Ratio of NDVI area to observed area
+        GeoDataFrame with added analysis columns
     """
-    if len(observed_areas) != len(ndvi_areas):
-        raise ValueError(
-            "observed_areas and ndvi_areas must have the same length")
 
-    results = []
+    # Get target UTM zone and transformer
+    grid_center = grid_gdf.unary_union.centroid
+    target_utm = get_utm_zone_from_WGS84(grid_center.x, grid_center.y)
 
-    for idx, cell in grid_gdf.iterrows():
-        cell_geom = cell.geometry
-        total_observed_area = 0
-        total_ndvi_area = 0
-        total_whc_area = 0
+    # Create GeoDataFrames from the area lists
+    observed_gdf = gpd.GeoDataFrame(
+        geometry=[area for area in observed_areas],
+        crs="EPSG:4326"
+    )
+    ndvi_gdf = gpd.GeoDataFrame(
+        geometry=[area for area in ndvi_areas],
+        crs="EPSG:4326"
+    )
+    whc_gdf = gpd.GeoDataFrame(
+        geometry=[area for area in whc_areas],
+        crs="EPSG:4326"
+    )
 
-        for obs_area, ndvi_area, whc_area in zip(observed_areas, ndvi_areas, whc_areas):
-            # Calculate observed area intersection
-            if safe_intersection(cell_geom, obs_area):
+    # Transform all geometries to UTM
+    observed_gdf = observed_gdf.to_crs(f"EPSG:{target_utm}")
+    ndvi_gdf = ndvi_gdf.to_crs(f"EPSG:{target_utm}")
+    whc_gdf = whc_gdf.to_crs(f"EPSG:{target_utm}")
+    grid_gdf = grid_gdf.to_crs(f"EPSG:{target_utm}")
 
-                intersection = safe_intersection(cell_geom, obs_area)
-                total_observed_area += intersection.area
+    # Perform overlay operations
+    observed_overlay = gpd.overlay(grid_gdf, observed_gdf, how='intersection')
+    ndvi_overlay = gpd.overlay(grid_gdf, ndvi_gdf, how='intersection')
+    whc_overlay = gpd.overlay(grid_gdf, whc_gdf, how='intersection')
 
-            # Calculate NDVI area intersection
+    # Calculate areas and group by grid cells
+    observed_areas = observed_overlay.groupby(
+        level=0)['geometry'].apply(lambda x: x.area.sum())
+    ndvi_areas = ndvi_overlay.groupby(
+        level=0)['geometry'].apply(lambda x: x.area.sum())
+    whc_areas = whc_overlay.groupby(
+        level=0)['geometry'].apply(lambda x: x.area.sum())
 
-            if ndvi_area is not None and safe_intersection(cell_geom, ndvi_area):
+    # Combine results
+    grid_gdf['total_observed_area'] = observed_areas
+    grid_gdf['total_ndvi_area'] = ndvi_areas
+    grid_gdf['total_whc_area'] = whc_areas
 
-                ndvi_intersection = safe_intersection(cell_geom, ndvi_area)
-                total_ndvi_area += ndvi_intersection.area
+    # Calculate scores
+    grid_gdf['ndvi_score'] = np.where(
+        grid_gdf['total_observed_area'] > 0,
+        grid_gdf['total_ndvi_area'] / grid_gdf['total_observed_area'],
+        0
+    )
+    grid_gdf['whc_score'] = np.where(
+        grid_gdf['total_observed_area'] > 0,
+        grid_gdf['total_whc_area'] / grid_gdf['total_observed_area'],
+        0
+    )
+    grid_gdf = grid_gdf.to_crs("EPSG:4326")
 
-            if whc_area is not None and safe_intersection(cell_geom, whc_area):
-
-                whc_intersection = safe_intersection(cell_geom, whc_area)
-                total_whc_area += whc_intersection.area
-
-        results.append({
-            'total_observed_area': total_observed_area,
-            'total_ndvi_area': total_ndvi_area,
-            'total_whc_area': total_whc_area,
-            # avoiding division by zero
-            'ndvi_score': (total_ndvi_area / total_observed_area) if total_observed_area > 0 else 0,
-            # avoiding division by zero
-            'whc_score': (total_whc_area / total_observed_area) if total_observed_area > 0 else 0
-        })
-
-    for col in ['total_observed_area', 'total_ndvi_area', 'total_whc_area', 'ndvi_score', 'whc_score']:
-        grid_gdf[col] = [r[col] for r in results]
+    # Fill NaN values with 0
+    grid_gdf = grid_gdf.fillna(0)
 
     return grid_gdf
-
-
-def safe_intersection(geom1, geom2):
-    """Safely perform intersection between two geometries"""
-    try:
-        # First try normal intersection
-        return geom1.intersection(geom2)
-    except Exception as e:
-        try:
-            # If that fails, try with validated geometries
-            valid_geom1 = make_valid(geom1)
-            valid_geom2 = make_valid(geom2)
-            return valid_geom1.intersection(valid_geom2)
-        except Exception as e:
-            # If all fails, try with buffer(0)
-            print(f"WARN: Using buffer(0) to fix geometry: {str(e)}")
-            return geom1.buffer(0).intersection(geom2.buffer(0))
