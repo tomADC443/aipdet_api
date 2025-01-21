@@ -50,13 +50,17 @@ def pipeline_organizer():
                 unfinished_gee_task.gee_current_status = gee_task['state']
                 unfinished_gee_task.last_updated = datetime.now()
 
-            # Cancel task if it takes an unreasonable amount of time
-            if gee_task['batch_eecu_usage_seconds'] > 300:
-                print(
-                    "Task organizer - Unfinished gee task cancelled due to too many EECU used. Id:", gee_task['id'], "task status:", gee_task['state'])
-                ee.data.cancelTask(gee_task['id'])
-                unfinished_gee_task.forced_action_taken = FORCED_ACTION.Cancelled_too_many_EECU.value
-                unfinished_gee_task.last_updated = datetime.now()
+            try:
+                # Cancel task if it takes an unreasonable amount of time
+                if gee_task['batch_eecu_usage_seconds'] > 300:
+                    print(
+                        "Task organizer - Unfinished gee task cancelled due to too many EECU used. Id:", gee_task['id'], "task status:", gee_task['state'])
+                    ee.data.cancelTask(gee_task['id'])
+                    unfinished_gee_task.forced_action_taken = FORCED_ACTION.Cancelled_too_many_EECU.value
+                    unfinished_gee_task.last_updated = datetime.now()
+            except KeyError:
+                print("Task organizer - Error in checking EECU usage for task",
+                      gee_task['id'], "Task might be too new to have EECU usage")
 
             # Cancel task if the user task (all gee tasks combined)needs to long
             if task.created_at + timedelta(hours=4) < datetime.now():
