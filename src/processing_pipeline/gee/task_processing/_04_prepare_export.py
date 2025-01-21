@@ -8,7 +8,7 @@ def prepare_export(featureCollection: ee.FeatureCollection, metadata: GeeTaskPro
 
     featureCollection = featureCollection.map(
         lambda feature: feature.set(P["process_id"], metadata.task_id)
-        .set(P["utc_capture_start"], image.get("system:time_start"))
+        .set(P["utc_capture_start"], ee.Date(ee.Number(image.get(P["utc_capture_start"]))).format('yyyy-MM-dd'))
         .set(P["user_id"], metadata.user_id)
     )
     return featureCollection

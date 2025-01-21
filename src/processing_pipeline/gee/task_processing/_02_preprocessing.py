@@ -1,6 +1,7 @@
 import ee
 from src.processing_pipeline.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
 from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
+from src.processing_pipeline.gee.task_processing.constants import P
 
 
 def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, metadata: GeeTaskProcessingMetadata) -> ee.Image:
@@ -28,7 +29,8 @@ def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, m
     image = image_collection.mosaic()
 
     image = mask_out_clouds_and_cloud_shadows(image_collection.first())
-
+    capture_date = image_collection.first().get('system:time_start')
+    image = image.set(P["utc_capture_start"], capture_date)
     return image
 
 

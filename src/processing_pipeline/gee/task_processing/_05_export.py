@@ -12,7 +12,7 @@ def start_export(feature_collection: ee.FeatureCollection, metadata) -> Any:
         description=metadata.task_id,
         append=True,
         selectors=[
-            '.geo', "image_id", "ndvi_polygons", "user_id", P['process_id'], P['water_hyacinth_classification']]
+            '.geo', "image_id", "ndvi_polygons", "user_id", P['process_id'], P['water_hyacinth_classification'], P['utc_capture_start']]
     )
     task.start()
     return task
