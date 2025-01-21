@@ -93,6 +93,7 @@ def create_grid(aoi_polygon: Polygon, cell_size: float, source_crs: str = "EPSG:
         grid_gdf['cell_intersection_area'] / grid_gdf['cell_area'],
         0
     )
+    grid_gdf = grid_gdf[grid_gdf['cell_intersection_area'] >= 1000]
     return grid_gdf
 
 # Example usage:
