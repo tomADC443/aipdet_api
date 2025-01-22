@@ -17,9 +17,6 @@ from shapely.geometry import Polygon
 def pipeline_organizer():
     print("Task organizer - started")
 
-    # Mark user tasks as completed if all gee tasks are in final state. Will run in the beginning and end of each pipeline organizer execution
-    start_spatial_analysis_on_tasks_if_ready()
-
     db: Session = SessionLocal()
     # Get all tasks without final endstate
     openTasks = db.execute(select(Task).where(
@@ -97,18 +94,20 @@ def start_spatial_analysis_on_tasks_if_ready():
         )
     )
     ready_tasks_with_aois = db.execute(query).all()
-
+    print("Task organizer - Number of tasks ready for spatial analysis:",
+          len(ready_tasks_with_aois))
     for task_with_aoi in ready_tasks_with_aois:
 
         task: Task = task_with_aoi[0]
         aoi = task_with_aoi[1]
-        print("Task organizer - Spatial analysis started for task", task.id)
-        aoi_polygon = Polygon(aoi['geometry']['coordinates'][0])
-        get_spatial_analysis(str(task.id), aoi_polygon)
-        # Update task status
-        db.execute(update(Task).where(Task.id == task.id).values(
-            status=Task_Status.Successful.value))
-        db.commit()
+        if task.created_at + timedelta(minutes=80) < datetime.now():
+            print("Task organizer - Spatial analysis started for task", task.id)
+            aoi_polygon = Polygon(aoi['geometry']['coordinates'][0])
+            get_spatial_analysis(str(task.id), aoi_polygon)
+            # Update task status
+            db.execute(update(Task).where(Task.id == task.id).values(
+                status=Task_Status.Successful.value))
+            db.commit()
 
     db.commit()
     db.close()
