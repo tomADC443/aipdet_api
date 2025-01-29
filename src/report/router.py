@@ -17,6 +17,7 @@ from typing import Dict, List, Union
 import numpy as np
 from datetime import datetime, timedelta
 import calendar
+from src.report.utils import execute_safe_query
 
 report_router = APIRouter()
 settings = get_settings()
@@ -29,35 +30,30 @@ def get_distinct_images_count(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    query = (
-        f'SELECT COUNT(DISTINCT image_id)\n'
-        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-        f'WHERE process_id = \'{task_id}\''
-    )
+    query = """
+        SELECT COUNT(DISTINCT image_id)
+        FROM `{table}`
+        WHERE process_id = @task_id
+    """.format(table=settings.DATABASE_REPORT_TABLE)
 
     try:
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": task_id}
         )
-        query_job = client.query(query)
-        result = query_job.result()
         row = next(result, None)
-        print(row)
+
         if not row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found."
             )
-        client.close()
         return {"count": row[0]}
-
     except Exception as e:
         print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-    finally:
-        client.close()
 
 
 @login_required
@@ -67,42 +63,34 @@ def get_temporal_range(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    query = (
-
-        f'SELECT \n'
-        f'MIN(utc_capture_start) as from_date, \n'
-        f'MAX(utc_capture_start) as to_date \n'
-        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-        f'WHERE process_id = \'{task_id}\''
-
-    )
+    query = """
+       SELECT
+       MIN(utc_capture_start) as from_date,
+       MAX(utc_capture_start) as to_date
+       FROM `{table}`
+       WHERE process_id = @task_id
+   """.format(table=settings.DATABASE_REPORT_TABLE)
 
     try:
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": task_id}
         )
-        query_job = client.query(query)
-        result = query_job.result()
-        result = next(result, None)
-
-        if not result.from_date or not result.to_date:
+        row = next(result, None)
+        if not row.from_date or not row.to_date:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found."
             )
-
         return {
-            "fromDate": result.from_date,
-            "toDate": result.to_date
+            "fromDate": row.from_date,
+            "toDate": row.to_date
         }
-        client.close()
     except Exception as e:
         print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-    finally:
-        client.close()
 
 
 @login_required
@@ -112,85 +100,25 @@ def get_total_observed_area(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    query = (
-        f'SELECT \n'
-        f'ROUND(SUM(ST_AREA(geo)/1000000),0) as area \n'
-        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-        f'WHERE process_id = \'{task_id}\''
-    )
+    query = """
+       SELECT
+       ROUND(SUM(ST_AREA(geo)/1000000),0) as area
+       FROM `{table}`
+       WHERE process_id = @task_id
+   """.format(table=settings.DATABASE_REPORT_TABLE)
 
     try:
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": task_id}
         )
-        query_job = client.query(query)
-        result = query_job.result()
-        result = next(result, None)
-
-        if not result.area:
+        row = next(result, None)
+        if not row.area:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found."
             )
-        client.close()
-        return {
-            "area": result.area,
-        }
-
-    except Exception as e:
-        print(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-    finally:
-        client.close()
-
-
-@login_required
-@report_router.get("/ndvi-area-data")
-def get_ndvi_area_data(
-    task_id: str = task_id_parameter,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    user_id = current_user['sub']
-    query = (
-        f'SELECT utc_capture_start as date, \n'
-        f'SUM(ST_AREA(ndvi_polygons)) as total_area \n'
-        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-        f'WHERE ndvi_polygons IS NOT NULL \n'
-        f'AND process_id=\'{task_id}\' \n'
-        f'GROUP BY utc_capture_start \n'
-        f'ORDER BY utc_capture_start \n'
-    )
-
-    task = db.execute(
-        select(Task).where(Task.id == task_id).filter(or_(Task.user_id == user_id, Task.is_public == True))).scalars().first()
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found."
-        )
-
-    try:
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
-        )
-        query_job = client.query(query)
-        result = query_job.result()
-
-        data = [
-            {
-                "date": row.date.strftime("%Y-%m-%d"),  # Format date as string
-                "value": float(row.total_area)  # Ensure value is float
-            }
-
-            for row in result
-        ]
-
-        return data
-
+        return {"area": row.area}
     except Exception as e:
         print(e)
         raise HTTPException(
@@ -202,36 +130,31 @@ def get_ndvi_area_data(
 def get_spatial_analysis(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
-    # current_user: dict = Depends(get_current_user)
 ):
+    query = """
+       SELECT
+       process_id,
+       cell_id,
+       ROUND(cell_area, 0) as cell_area,
+       ROUND(cell_intersection_area, 0) as cell_intersection_area,
+       ROUND(cell_coverage_ratio, 2) as cell_coverage_ratio,
+       ST_ASGEOJSON(geometry) as geometry,
+       ROUND(total_observed_area, 0) as total_observed_area,
+       ROUND(total_ndvi_area, 0) as total_ndvi_area,
+       ROUND(ndvi_score, 2) as ndvi_score,
+       ROUND(total_whc_area, 0) as total_whc_area,
+       ROUND(whc_score, 2) as whc_score
+       FROM `{table}`
+       WHERE process_id = @task_id
+   """.format(table=settings.DATABASE_GRID_TABLE)
 
     try:
-        query = (
-            f'SELECT \n'
-            f'process_id, \n'
-            f'cell_id, \n'
-            f'ROUND(cell_area, 0) as cell_area, \n'
-            f'ROUND(cell_intersection_area, 0) as cell_intersection_area, \n'
-            f'ROUND(cell_coverage_ratio, 2) as cell_coverage_ratio, \n'
-            f'ST_ASGEOJSON(geometry) as geometry, \n'
-            f'ROUND(total_observed_area, 0) as total_observed_area, \n'
-            f'ROUND(total_ndvi_area, 0) as total_ndvi_area, \n'
-            f'ROUND(ndvi_score, 2) as ndvi_score, \n'
-            f'ROUND(total_whc_area, 0) as total_whc_area, \n'
-            f'ROUND(whc_score, 2) as whc_score \n'
-            f'FROM `{settings.DATABASE_GRID_TABLE}` \n'
-            f'WHERE process_id =\'{task_id}\' \n'
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": task_id}
         )
-
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
-        )
-
-        query_job = client.query(query)
-        result = query_job.result()
 
         features = []
-
         for row in result:
             geometry = json.loads(row.geometry)
             properties = {
@@ -246,7 +169,6 @@ def get_spatial_analysis(
                 'total_whc_area': row.total_whc_area,
                 'whc_score': row.whc_score
             }
-
             feature = {
                 'type': 'Feature',
                 'geometry': geometry,
@@ -254,46 +176,38 @@ def get_spatial_analysis(
             }
             features.append(feature)
 
-        geojson = {
+        return {
             'type': 'FeatureCollection',
             'features': features
         }
-        return geojson
-
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @report_router.get("/season-analysis")
 def get_season_analysis(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
-    # current_user: dict = Depends(get_current_user)
 ):
+    query = """
+       SELECT
+       utc_capture_start as capture_date,
+       ROUND(SUM(ST_AREA(ndvi_polygons))/ SUM(ST_AREA(geo)),4)*100 AS NDVI_SCORE
+       FROM `{table}`
+       WHERE process_id = @task_id
+       GROUP BY capture_date
+       ORDER BY capture_date ASC
+   """.format(table=settings.DATABASE_REPORT_TABLE)
 
     try:
-        query = (
-            f'SELECT \n'
-            f'utc_capture_start as capture_date, \n'
-            # f'SUM(ST_AREA(ndvi_polygons)) as NDVI_AREA, \n'
-            # f'SUM(ST_AREA(geo)) as OBSERVED_AREA, \n'
-            f'ROUND(SUM(ST_AREA(ndvi_polygons))/ SUM(ST_AREA(geo)),4)*100 AS NDVI_SCORE \n'
-            f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-            f'WHERE \n'
-            f'process_id = \'{task_id}\' \n'
-            f'GROUP BY \n'
-            f'capture_date \n'
-            f'ORDER BY \n'
-            f'capture_date ASC \n'
-        )
-        print(query)
 
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": task_id}
         )
-
-        query_job = client.query(query)
-        result = query_job.result()
 
         capture_dates = []
         ndvi_scores = []
@@ -304,7 +218,11 @@ def get_season_analysis(
             capture_dates.append(row.capture_date)
             ndvi_scores.append(row.NDVI_SCORE)
 
-        client.close()
+        df = pd.DataFrame({
+            'capture_date': capture_dates,
+            'ndvi_score': ndvi_scores
+        })
+        df['capture_date'] = pd.to_datetime(df['capture_date'])
 
         df = pd.DataFrame({
             'capture_date': capture_dates,
@@ -312,25 +230,20 @@ def get_season_analysis(
         })
         df['capture_date'] = pd.to_datetime(df['capture_date'])
 
+        seasons = analyze_seasonal_patterns_weekly(df)
+        monthly_average = get_monthly_average_pivot(df)
+        growth_rates = analyze_growth_rate(df)
+
+        return {
+            'seasons': seasons,
+            'monthly_average': monthly_average,
+            'growthRates': growth_rates
+        }
     except Exception as e:
         print(e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-    df = pd.DataFrame({
-        'capture_date': capture_dates,
-        'ndvi_score': ndvi_scores
-    })
-    df['capture_date'] = pd.to_datetime(df['capture_date'])
-
-    seasons = analyze_seasonal_patterns_weekly(df)
-    monthly_average = get_monthly_average_pivot(df)
-    growth_rates = analyze_growth_rate(df)
-
-    return {
-        'seasons': seasons,
-        'monthly_average': monthly_average,
-        'growthRates': growth_rates
-    }
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @login_required
@@ -372,24 +285,24 @@ def get_analysis_record(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    query = (
+    query = """
+       SELECT 
+       ST_ASGEOJSON(geo) as observed_area,
+       ST_ASGEOJSON(ndvi_polygons) as ndvi_area,
+       ST_ASGEOJSON(water_hyacinth_classification) as whc_area
+       FROM `{table}`
+       WHERE process_id = @task_id
+       AND utc_capture_start = @date_string
+   """.format(table=settings.DATABASE_REPORT_TABLE)
 
-        f'SELECT \n'
-        f'ST_ASGEOJSON(geo) as observed_area, \n'
-        f'ST_ASGEOJSON(ndvi_polygons) as ndvi_area, \n'
-        f'ST_ASGEOJSON(water_hyacinth_classification) as whc_area \n'
-        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-        f'WHERE process_id = \'{task_id}\' \n'
-        f'AND utc_capture_start = \'{dateString}\''
-
-    )
     try:
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
+        result = execute_safe_query(
+            query=query,
+            params={
+                "task_id": task_id,
+                "date_string": dateString
+            }
         )
-
-        query_job = client.query(query)
-        result = query_job.result()
 
         record = {
             'observed_areas': [],
@@ -407,9 +320,11 @@ def get_analysis_record(
                 record['whc_areas'].append(json.loads(row.whc_area))
 
         return record
-
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 def get_monthly_average_pivot(df: pd.DataFrame) -> Dict[str, List[Union[str, float]]]:
