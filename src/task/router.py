@@ -40,7 +40,7 @@ def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
 
     user_id = current_user['sub']
     tasks = db.execute(
-        select(Task).where(Task.user_id == user_id).where(Task.is_deleted == False)).scalars().all()
+        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id == user_id).where(Task.is_deleted == False)).unique().all()
 
     responseData = [
         {
@@ -49,9 +49,14 @@ def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
             "status": task.status,
             "createdAt": int(task.created_at.timestamp()),
             "isPublic": task.is_public,
-            "aoiId": str(task.aoi_id),
-
-        } for task in tasks
+            "aoi": {
+                "id": str(aoi.id),
+                "name": aoi.name,
+                "description": aoi.description,
+                "geometry": aoi.geometry,
+                "createdAt": int(aoi.created_at.timestamp()),
+            }
+        } for task, aoi in tasks
     ]
     return responseData
 
