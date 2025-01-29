@@ -131,7 +131,7 @@ def login(user: UserLoginRequest, response: Response, db: Session = Depends(get_
     jwt_algorithm = settings.JWT_ALGORITHM
     token = jwt.encode(jwt_payload, jwt_secret, algorithm=jwt_algorithm)
 
-    cookie_validity = 14400  # 4 hours
+    cookie_validity = 60*60 * 24*5
     utc_now = datetime.now(timezone.utc)  # Explicitly set to UTC
     cookie_expires_at = utc_now + timedelta(seconds=cookie_validity)
     cookie_secure_flag = False if settings.RUNNING_ENV == "development" else True
