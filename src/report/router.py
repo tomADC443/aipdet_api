@@ -423,33 +423,26 @@ def get_monthly_average_pivot(df: pd.DataFrame) -> Dict[str, List[Union[str, flo
 
 
 def analyze_growth_rate(df: pd.DataFrame) -> Dict[str, Dict[str, str]]:
-    # Prepare weekly means
     df['week'] = df['capture_date'].dt.isocalendar().week
     weekly_means = df.groupby('week')['ndvi_score'].mean()
 
-    # Calculate week-over-week changes
-    changes = weekly_means.diff()
+    # Clip values to prevent overflow
+    weekly_means = weekly_means.clip(-1e308, 1e308)
+    changes = weekly_means.diff().clip(-1e308, 1e308)
 
-    # Find maximum positive change
-    max_increase = changes.max()
-    max_increase_week = changes.idxmax()
-
-    # Find maximum negative change (steepest decline)
-    max_decrease = changes.min()
-    max_decrease_week = changes.idxmin()
-
-    max_week = max(weekly_means.index)
-
-    results = []
+    max_increase = float(changes.max())
+    max_increase_week = int(changes.idxmax())
+    max_decrease = float(changes.min())
+    max_decrease_week = int(changes.idxmin())
+    max_week = int(max(weekly_means.index))
 
     def get_prev_week(week):
         return max_week if week == 1 else week - 1
 
-    weekly_data = {int(k): float(v) for k, v in weekly_means.to_dict().items()}
+    changes = {int(k): float(v) for k, v in changes.to_dict().items()}
 
-    # Format results for maximum increase
-    results.append({
-        'weekly data': weekly_data,
+    results = [{
+        'weekly_changes': changes,
         'max_increase': {
             'week': str(max_increase_week),
             'week_description': get_week_description(max_increase_week),
@@ -462,7 +455,7 @@ def analyze_growth_rate(df: pd.DataFrame) -> Dict[str, Dict[str, str]]:
             'change': f"{max_decrease:.2f}",
             'change_percentage': f"{((max_decrease / weekly_means[get_prev_week(max_decrease_week)]) * 100):.1f}%"
         }
-    })
+    }]
 
     return results
 
@@ -480,13 +473,15 @@ def analyze_seasonal_patterns_weekly(df) -> List[Dict[str, Union[int, str]]]:
     threshold = smoothed_values.mean()
     above_threshold = smoothed_values > threshold
 
-    last_week = max(weekly_means.index)  # 53 or 52 depending on the year
+    # 53 or 52 depending on the year
+    last_week = last_week = int(max(weekly_means.index))
 
     # Find blocks
     blocks = []
     start = None
 
     for week in sorted(above_threshold.index):
+        week = int(week)
         if above_threshold[week]:
             if start is None:
                 start = week
@@ -502,7 +497,7 @@ def analyze_seasonal_patterns_weekly(df) -> List[Dict[str, Union[int, str]]]:
     # check if blocks are 2 weeks or less apart and merge them
     i = 0
     while i < len(blocks) - 1:
-        if blocks[i+1][0] - blocks[i][1] <= 2:
+        if (blocks[i+1][0] - blocks[i][1]) <= 2:
             blocks[i][1] = blocks[i+1][1]
             blocks.pop(i+1)
         else:
@@ -515,8 +510,8 @@ def analyze_seasonal_patterns_weekly(df) -> List[Dict[str, Union[int, str]]]:
             blocks = [merged] + blocks[1:-1]
 
     # check if all blocks have a minimum length of 6 (otherwise remove them)
-    blocks = [block for block in blocks if (block[1] - block[0] + 1) >= 6]
-
+    blocks = [block for block in blocks if (
+        int(block[1]) - int(block[0]) + 1) >= 6]
     # Convert blocks to strings for output
     blocks_with_descriptions = []
     for block in blocks:
