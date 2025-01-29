@@ -17,7 +17,7 @@ from typing import Dict, List, Union
 import numpy as np
 from datetime import datetime, timedelta
 import calendar
-from src.report.utils import execute_safe_query
+from src.report.utils import execute_safe_query, check_task_ownership
 
 report_router = APIRouter()
 settings = get_settings()
@@ -30,6 +30,8 @@ def get_distinct_images_count(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    check_task_ownership(task_id, current_user['sub'])
+
     query = """
         SELECT COUNT(DISTINCT image_id)
         FROM `{table}`
@@ -63,6 +65,7 @@ def get_temporal_range(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    check_task_ownership(task_id, current_user['sub'])
     query = """
        SELECT
        MIN(utc_capture_start) as from_date,
@@ -100,6 +103,7 @@ def get_total_observed_area(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    check_task_ownership(task_id, current_user['sub'])
     query = """
        SELECT
        ROUND(SUM(ST_AREA(geo)/1000000),0) as area
@@ -126,11 +130,15 @@ def get_total_observed_area(
         )
 
 
+@login_required
 @report_router.get("/spatial-analysis")
 def get_spatial_analysis(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+
 ):
+    check_task_ownership(task_id, current_user['sub'])
     query = """
        SELECT
        process_id,
@@ -187,11 +195,14 @@ def get_spatial_analysis(
         )
 
 
+@login_required
 @report_router.get("/season-analysis")
 def get_season_analysis(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    check_task_ownership(task_id, current_user['sub'])
     query = """
        SELECT
        utc_capture_start as capture_date,
@@ -253,6 +264,7 @@ def get_available_dates(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    check_task_ownership(task_id, current_user['sub'])
     query = (
         f'SELECT DISTINCT utc_capture_start as date \n'
         f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
@@ -285,6 +297,7 @@ def get_analysis_record(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    check_task_ownership(task_id, current_user['sub'])
     query = """
        SELECT 
        ST_ASGEOJSON(geo) as observed_area,
