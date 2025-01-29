@@ -12,7 +12,7 @@ def start_scheduler():
     scheduler.add_job(
         pipeline_organizer,
         trigger='date',
-        run_date=datetime.now() + timedelta(seconds=120),
+        run_date=datetime.now() + timedelta(seconds=180),
         id="one_time_task",
     )
 
