@@ -45,17 +45,18 @@ def check_task_ownership(
         task = db.execute(select(Task).where(
             Task.id == task_id)).scalars().first()
         db.commit()
+
+        if task is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        if str(task.user_id) == str(user_id):
+            return
+
+        if not task.is_public:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
     finally:
         db.close()
-
-    if task is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
-    if task.user_id == user_id:
-        return
-
-    if not task.is_public:
-        raise HTTPException(
-            status_code=status.HTTP403_FORBIDDEN,
-        )
