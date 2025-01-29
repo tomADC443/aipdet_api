@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from src.database import get_db  # Database dependency
+from src.database import get_db
 from src.aoi.models import AOI
 from src.aoi.schemas import AOICreationRequest, AoiGetResponse, AOIDeletionRequest, aoi_id_parameter
 from fastapi.responses import JSONResponse
