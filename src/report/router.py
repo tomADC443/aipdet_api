@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.config import get_settings
 from google.cloud import bigquery
-from src.report.schemas import task_id_parameter
+from src.report.schemas import task_id_parameter, dateString
 from src.dependencies import get_current_user, login_required
 from sqlalchemy import select, or_
 from src.task.models import Task
@@ -13,7 +13,7 @@ from shapely.geometry import Polygon, MultiPolygon
 from shapely.validation import explain_validity
 from scipy import signal
 from statsmodels.tsa.seasonal import seasonal_decompose
-from typing import Dict
+from typing import Dict, List, Union
 import numpy as np
 from datetime import datetime, timedelta
 import calendar
@@ -48,7 +48,7 @@ def get_distinct_images_count(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found."
             )
-
+        client.close()
         return {"count": row[0]}
 
     except Exception as e:
@@ -56,6 +56,94 @@ def get_distinct_images_count(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+    finally:
+        client.close()
+
+
+@login_required
+@report_router.get("/temporal-range")
+def get_temporal_range(
+    task_id: str = task_id_parameter,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    query = (
+
+        f'SELECT \n'
+        f'MIN(utc_capture_start) as from_date, \n'
+        f'MAX(utc_capture_start) as to_date \n'
+        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
+        f'WHERE process_id = \'{task_id}\''
+
+    )
+
+    try:
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
+        )
+        query_job = client.query(query)
+        result = query_job.result()
+        result = next(result, None)
+
+        if not result.from_date or not result.to_date:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found."
+            )
+
+        return {
+            "fromDate": result.from_date,
+            "toDate": result.to_date
+        }
+        client.close()
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    finally:
+        client.close()
+
+
+@login_required
+@report_router.get("/total-observed-area")
+def get_total_observed_area(
+    task_id: str = task_id_parameter,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    query = (
+        f'SELECT \n'
+        f'ROUND(SUM(ST_AREA(geo)/1000000),0) as area \n'
+        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
+        f'WHERE process_id = \'{task_id}\''
+    )
+
+    try:
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
+        )
+        query_job = client.query(query)
+        result = query_job.result()
+        result = next(result, None)
+
+        if not result.area:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found."
+            )
+        client.close()
+        return {
+            "area": result.area,
+        }
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    finally:
+        client.close()
 
 
 @login_required
@@ -234,17 +322,153 @@ def get_season_analysis(
     })
     df['capture_date'] = pd.to_datetime(df['capture_date'])
 
-    result = analyze_seasonal_patterns_weekly(df)
-    print(result)
-    # Test various weeks
-    test_weeks = [1, 2, 3, 26, 52, 53]
-    for week in test_weeks:
-        print(f"Week {week}: {get_week_description(week)}")
-    return
+    seasons = analyze_seasonal_patterns_weekly(df)
+    monthly_average = get_monthly_average_pivot(df)
+    growth_rates = analyze_growth_rate(df)
+
+    return {
+        'seasons': seasons,
+        'monthly_average': monthly_average,
+        'growthRates': growth_rates
+    }
 
 
-def analyze_seasonal_patterns_weekly(df):
-    # data preparation
+@login_required
+@report_router.get("/available-dates")
+def get_available_dates(
+    task_id: str = task_id_parameter,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    query = (
+        f'SELECT DISTINCT utc_capture_start as date \n'
+        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
+        f'WHERE process_id = \'{task_id}\''
+    )
+    try:
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
+        )
+
+        query_job = client.query(query)
+        result = query_job.result()
+
+        dates = []
+
+        for row in result:
+            dates.append(row.date)
+
+        return sorted(dates)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@login_required
+@report_router.get("/analysis-record")
+def get_analysis_record(
+    task_id: str = task_id_parameter,
+    dateString: str = dateString,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    query = (
+
+        f'SELECT \n'
+        f'ST_ASGEOJSON(geo) as observed_area, \n'
+        f'ST_ASGEOJSON(ndvi_polygons) as ndvi_area, \n'
+        f'ST_ASGEOJSON(water_hyacinth_classification) as whc_area \n'
+        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
+        f'WHERE process_id = \'{task_id}\' \n'
+        f'AND utc_capture_start = \'{dateString}\''
+
+    )
+    try:
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
+        )
+
+        query_job = client.query(query)
+        result = query_job.result()
+
+        record = {
+            'observed_areas': [],
+            'ndvi_areas': [],
+            'whc_areas': [],
+            'dateString': dateString
+        }
+
+        for row in result:
+            if row.observed_area:
+                record['observed_areas'].append(json.loads(row.observed_area))
+            if row.ndvi_area:
+                record['ndvi_areas'].append(json.loads(row.ndvi_area))
+            if row.whc_area:
+                record['whc_areas'].append(json.loads(row.whc_area))
+
+        return record
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def get_monthly_average_pivot(df: pd.DataFrame) -> Dict[str, List[Union[str, float]]]:
+    df['month'] = df['capture_date'].dt.month
+    monthly_means = df.groupby('month')['ndvi_score'].mean()
+    monthly_dict = {
+        'month': [calendar.month_abbr[m] for m in monthly_means.index],
+        'values':  [float(x) for x in monthly_means.values.tolist()]
+    }
+    return monthly_dict
+
+
+def analyze_growth_rate(df: pd.DataFrame) -> Dict[str, Dict[str, str]]:
+    # Prepare weekly means
+    df['week'] = df['capture_date'].dt.isocalendar().week
+    weekly_means = df.groupby('week')['ndvi_score'].mean()
+
+    # Calculate week-over-week changes
+    changes = weekly_means.diff()
+
+    # Find maximum positive change
+    max_increase = changes.max()
+    max_increase_week = changes.idxmax()
+
+    # Find maximum negative change (steepest decline)
+    max_decrease = changes.min()
+    max_decrease_week = changes.idxmin()
+
+    max_week = max(weekly_means.index)
+
+    results = []
+
+    def get_prev_week(week):
+        return max_week if week == 1 else week - 1
+
+    weekly_data = {int(k): float(v) for k, v in weekly_means.to_dict().items()}
+
+    # Format results for maximum increase
+    results.append({
+        'weekly data': weekly_data,
+        'max_increase': {
+            'week': str(max_increase_week),
+            'week_description': get_week_description(max_increase_week),
+            'change': f"{max_increase:.2f}",
+            'change_percentage': f"{((max_increase / weekly_means[get_prev_week(max_increase_week)]) * 100):.1f}%"
+        },
+        'max_decrease': {
+            'week': str(max_decrease_week),
+            'week_description': get_week_description(max_decrease_week),
+            'change': f"{max_decrease:.2f}",
+            'change_percentage': f"{((max_decrease / weekly_means[get_prev_week(max_decrease_week)]) * 100):.1f}%"
+        }
+    })
+
+    return results
+
+
+def analyze_seasonal_patterns_weekly(df) -> List[Dict[str, Union[int, str]]]:
+    # data prep
     df['week'] = df['capture_date'].dt.isocalendar().week
     weekly_means = df.groupby('week')['ndvi_score'].mean()
 
@@ -255,6 +479,8 @@ def analyze_seasonal_patterns_weekly(df):
     # Get above/below threshold
     threshold = smoothed_values.mean()
     above_threshold = smoothed_values > threshold
+
+    last_week = max(weekly_means.index)  # 53 or 52 depending on the year
 
     # Find blocks
     blocks = []
@@ -284,7 +510,6 @@ def analyze_seasonal_patterns_weekly(df):
 
     # check if the last block is two weeks or less apart from the first block and merge them
     if len(blocks) >= 2:
-        last_week = 53
         if blocks[0][0] <= 2 or (last_week - blocks[-1][1]) <= 2:
             merged = [blocks[-1][0], blocks[0][1]]
             blocks = [merged] + blocks[1:-1]
@@ -293,18 +518,16 @@ def analyze_seasonal_patterns_weekly(df):
     blocks = [block for block in blocks if (block[1] - block[0] + 1) >= 6]
 
     # Convert blocks to strings for output
-    block_descriptions = []
+    blocks_with_descriptions = []
     for block in blocks:
-        block_descriptions.append(f"Week {block[0]} to Week {block[1]}")
+        blocks_with_descriptions.append({
+            "season_start_week": int(block[0]),
+            "season_end_week": int(block[1]),
+            "season_start_description": get_week_description(block[0]),
+            "season_end_description": get_week_description(block[1])
+        })
 
-    return {
-        'weekly_means': weekly_means,
-        'smoothed_values': smoothed_values,
-        'threshold': threshold,
-        'blocks': block_descriptions,
-        'above_threshold': above_threshold,
-        'raw_blocks': blocks
-    }
+    return blocks_with_descriptions
 
 
 def get_week_description(week_number: int) -> str:
