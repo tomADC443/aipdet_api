@@ -2,11 +2,11 @@ from typing import Any
 from src.config import get_settings
 from google.cloud import bigquery
 import json
-from src.task.models import Task, TaskProcesses
-from sqlalchemy import select, and_, update
+from src.task.models import Task
+from sqlalchemy import select
 from src.database import SessionLocal
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import HTTPException, status
 
 settings = get_settings()
 
