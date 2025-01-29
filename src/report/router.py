@@ -439,10 +439,14 @@ def analyze_growth_rate(df: pd.DataFrame) -> Dict[str, Dict[str, str]]:
     def get_prev_week(week):
         return max_week if week == 1 else week - 1
 
-    changes = {int(k): float(v) for k, v in changes.to_dict().items()}
+    # Make json serializable and replace NaN with None
+    changes = {int(k): None if pd.isna(v) else float(v)
+               for k, v in changes.to_dict().items()}
 
-    results = [{
-        'weekly_changes': changes,
+    results = {
+        'weekly_changes': {'weeks': [int(k) for k in changes.keys()],
+                           'values': [None if pd.isna(v) else float(v) for v in changes.values()]
+                           },
         'max_increase': {
             'week': str(max_increase_week),
             'week_description': get_week_description(max_increase_week),
@@ -455,7 +459,7 @@ def analyze_growth_rate(df: pd.DataFrame) -> Dict[str, Dict[str, str]]:
             'change': f"{max_decrease:.2f}",
             'change_percentage': f"{((max_decrease / weekly_means[get_prev_week(max_decrease_week)]) * 100):.1f}%"
         }
-    }]
+    }
 
     return results
 
