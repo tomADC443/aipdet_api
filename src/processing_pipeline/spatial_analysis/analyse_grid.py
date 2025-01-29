@@ -4,7 +4,7 @@ from shapely.geometry import box, Polygon, MultiPolygon
 from shapely.validation import make_valid
 from shapely.ops import transform
 import geopandas as gpd  # type: ignore
-from src.report.utils import get_utm_zone_from_WGS84
+from src.processing_pipeline.spatial_analysis.utils import get_utm_zone_from_WGS84
 from typing import List, Optional
 
 
