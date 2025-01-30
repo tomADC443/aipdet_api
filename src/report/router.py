@@ -263,7 +263,7 @@ def get_available_dates(
         )
 
         dates = [row.date for row in result]
-        return sorted(dates, reverse=True)
+        return {"dates": sorted(dates, reverse=True)}
     except Exception as e:
         print(e)
         raise HTTPException(
