@@ -61,6 +61,33 @@ def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
     return responseData
 
 
+@login_required
+@tasks_router.get("/public")
+def get_public_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+
+    user_id = current_user['sub']
+    tasks = db.execute(
+        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id != user_id).where(Task.is_deleted == False).where(Task.is_public == True)).unique().all()
+
+    responseData = [
+        {
+            "id": str(task.id),
+            "name": task.name,
+            "status": task.status,
+            "createdAt": int(task.created_at.timestamp()),
+            "isPublic": task.is_public,
+            "aoi": {
+                "id": str(aoi.id),
+                "name": aoi.name,
+                "description": aoi.description,
+                "geometry": aoi.geometry,
+                "createdAt": int(aoi.created_at.timestamp()),
+            }
+        } for task, aoi in tasks
+    ]
+    return responseData
+
+
 @ login_required
 @ task_router.post("")
 def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
