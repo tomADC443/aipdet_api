@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.config import get_settings
-from google.cloud import bigquery
 from src.report.schemas import task_id_parameter, dateString
 from src.dependencies import get_current_user, login_required
 import json
@@ -226,12 +225,6 @@ def get_season_analysis(
         })
         df['capture_date'] = pd.to_datetime(df['capture_date'])
 
-        df = pd.DataFrame({
-            'capture_date': capture_dates,
-            'ndvi_score': ndvi_scores
-        })
-        df['capture_date'] = pd.to_datetime(df['capture_date'])
-
         seasons = analyze_seasonal_patterns_weekly(df)
         monthly_average = get_monthly_average_pivot(df)
         growth_rates = analyze_growth_rate(df)
@@ -256,28 +249,26 @@ def get_available_dates(
     current_user: dict = Depends(get_current_user)
 ):
     check_task_ownership(task_id, current_user['sub'])
-    query = (
-        f'SELECT DISTINCT utc_capture_start as date \n'
-        f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-        f'WHERE process_id = \'{task_id}\''
-    )
+
+    query = """
+       SELECT DISTINCT utc_capture_start as date
+       FROM `{table}`
+       WHERE process_id = @task_id
+   """.format(table=settings.DATABASE_REPORT_TABLE)
+
     try:
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": task_id}
         )
 
-        query_job = client.query(query)
-        result = query_job.result()
-
-        dates = []
-
-        for row in result:
-            dates.append(row.date)
-
-        return sorted(dates)
-
+        dates = [row.date for row in result]
+        return sorted(dates, reverse=True)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @login_required
