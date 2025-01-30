@@ -108,7 +108,17 @@ def analyze_seasonal_patterns_weekly(df) -> List[Dict[str, Union[int, str]]]:
 
     # check if all blocks have a minimum length of 6 (otherwise remove them)
     blocks = [block for block in blocks if (
-        int(block[1]) - int(block[0]) + 1) >= 6]
+        # Case 1: Normal blocks (end >= start): Check if length is 6+ weeks
+        (end := block[1]) >= (start := block[0]) and end - start + 1 >= 6
+        or
+        # Case 2: year-around blocks (crossing year end): Calculate total length as
+        # weeks remaining in year + weeks in new year
+        start > end and (
+            # Handle edge case when start week > 52
+            start > last_week and last_week - last_week + 1 + end >= 6
+            or last_week - start + 1 + end >= 6
+        )
+    )]
     # Convert blocks to strings for output
     blocks_with_descriptions = []
     for block in blocks:
