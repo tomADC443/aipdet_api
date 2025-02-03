@@ -7,7 +7,7 @@ from src.user.models import User
 from src.user.schemas import UserSignupResponse, UserSignupRequest, UserLoginRequest, UserLoginResponse, newPasswordDataRequest, ResetPasswordRequest
 import requests
 import os
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from src.config import get_settings
 from src.user.constants import HTML_RESPONSE_SUCCESS, HTML_RESPONSE_ERROR
 from src.user.exceptions import UnauthenticatedLoginException, BadTokenException
@@ -148,7 +148,7 @@ def login(user: UserLoginRequest, response: Response, db: Session = Depends(get_
             max_age=cookie_validity  # 4 hours
         )
 
-        return {"message": "Login successful.", "expires": int(cookie_expires_at.timestamp())}
+        return {"message": "Login successful.", "expires": int(cookie_expires_at.timestamp()), "data": jwt_payload}
     except Exception as e:
         print(e)
         raise HTTPException(
@@ -284,3 +284,17 @@ def reset_password(user_info: ResetPasswordRequest, db: Session = Depends(get_db
         )
     finally:
         db.close()
+
+
+@user_router.post("/logout")
+def logout():
+
+    response = JSONResponse(content={"message": "Logged out successfully"})
+    response.delete_cookie(
+        key="auth_token",
+        httponly=True,
+        secure=False if settings.RUNNING_ENV == "development" else True,
+        samesite="strict",
+        path="/"
+    )
+    return response
