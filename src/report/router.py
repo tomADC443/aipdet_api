@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.config import get_settings
-from src.report.schemas import task_id_parameter, dateString
+from src.report.schemas import task_id_parameter, dateString, DistinctImagesResponse, TemporalRangeResponse, TotalAreaResponse, SpatialAnalysisResponse, SeasonAnalysisResponse, AvailableDatesResponse, AnalysisRecord
 from src.dependencies import get_current_user, login_required
 import json
 import pandas as pd
@@ -14,7 +14,7 @@ settings = get_settings()
 
 
 @login_required
-@report_router.get("/number-total-distinct-images")
+@report_router.get("/number-total-distinct-images", response_model=DistinctImagesResponse)
 def get_distinct_images_count(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
@@ -49,7 +49,7 @@ def get_distinct_images_count(
 
 
 @login_required
-@report_router.get("/temporal-range")
+@report_router.get("/temporal-range", response_model=TemporalRangeResponse)
 def get_temporal_range(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
@@ -87,7 +87,7 @@ def get_temporal_range(
 
 
 @login_required
-@report_router.get("/total-observed-area")
+@report_router.get("/total-observed-area", response_model=TotalAreaResponse)
 def get_total_observed_area(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
@@ -121,7 +121,7 @@ def get_total_observed_area(
 
 
 @login_required
-@report_router.get("/spatial-analysis")
+@report_router.get("/spatial-analysis", response_model=SpatialAnalysisResponse)
 def get_spatial_analysis(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
@@ -186,7 +186,7 @@ def get_spatial_analysis(
 
 
 @login_required
-@report_router.get("/season-analysis")
+@report_router.get("/season-analysis", response_model=SeasonAnalysisResponse)
 def get_season_analysis(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
@@ -242,7 +242,7 @@ def get_season_analysis(
 
 
 @login_required
-@report_router.get("/available-dates")
+@report_router.get("/available-dates", response_model=AvailableDatesResponse)
 def get_available_dates(
     task_id: str = task_id_parameter,
     db: Session = Depends(get_db),
@@ -272,7 +272,7 @@ def get_available_dates(
 
 
 @login_required
-@report_router.get("/analysis-record")
+@report_router.get("/analysis-record", response_model=AnalysisRecord)
 def get_analysis_record(
     task_id: str = task_id_parameter,
     dateString: str = dateString,
