@@ -1,16 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from src.database import get_db
 from src.config import get_settings
 from google.cloud import bigquery
-from src.report.schemas import task_id_parameter
-from src.dependencies import get_current_user, login_required
-from sqlalchemy import select, or_
-from src.task.models import Task
+from fastapi import APIRouter
 import json
 from src.processing_pipeline.spatial_analysis.create_grid import create_grid
 from shapely.geometry import Polygon, MultiPolygon
-from shapely.validation import explain_validity
 from src.processing_pipeline.spatial_analysis.analyse_grid import analyze_grid_observations
 from src.report.utils import execute_safe_query
 from typing import Dict
