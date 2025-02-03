@@ -2,45 +2,84 @@ from src.task.schemas import TaskCreationRequest, TaskDeletionRequest
 from src.dependencies import get_current_user, login_required
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from src.database import get_db
-from src.task.models import Task
+from src.task.models import Task, TaskProcesses
 from src.task.constants import Task_Status
 from fastapi.responses import JSONResponse
 from src.aoi.models import AOI
 from shapely.geometry import Polygon
 from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from src.processing_pipeline.gee.task_processing.main import start_task_process
+from src.report.utils import execute_safe_query
+from src.config import get_settings
+settings = get_settings()
+
 task_router = APIRouter()
 tasks_router = APIRouter()
 
 
 @login_required
 @task_router.delete("")
-def soft_delete_task(data: TaskDeletionRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def delete_task(data: TaskDeletionRequest, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
 
     user_id = current_user['sub']
-    task = db.execute(
-        select(Task).where(Task.user_id == user_id).where(Task.id == data.id)).scalars().first()
+    try:
+        task = db.execute(
+            select(Task).where(Task.user_id == user_id).where(Task.id == data.id)).scalars().first()
 
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found or you don't have permission to delete it."
+        if not task:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "detail": "Task not found or you don't have permission to delete it."}
+            )
+
+        if str(task.status) != Task_Status.Successful.value and str(task.status) != Task_Status.Failed.value:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": "Task cannot be deleted because it is still processing."}
+            )
+
+        db.execute(
+            delete(TaskProcesses).where(TaskProcesses.task_id == data.id))
+
+        # Delete from bigQuery
+        query = """
+            DELETE FROM `{table}` WHERE process_id = @task_id;
+        """.format(table=settings.DATABASE_GRID_TABLE)
+
+        execute_safe_query(
+            query=query,
+            params={"task_id": data.id}
+        )
+        query = """
+            DELETE FROM `{table}` WHERE process_id = @task_id;
+        """.format(table=settings.DATABASE_REPORT_TABLE)
+
+        execute_safe_query(
+            query=query,
+            params={"task_id": data.id}
         )
 
-    task.is_deleted = True  # type: ignore
-    db.commit()
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    finally:
+        db.close()
     return
 
 
-@login_required
-@tasks_router.get("")
+@ login_required
+@ tasks_router.get("")
 def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
 
     user_id = current_user['sub']
     tasks = db.execute(
-        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id == user_id).where(Task.is_deleted == False)).unique().all()
+        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id == user_id)).unique().all()
 
     responseData = [
         {
@@ -61,13 +100,13 @@ def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_cu
     return responseData
 
 
-@login_required
-@tasks_router.get("/public")
+@ login_required
+@ tasks_router.get("/public")
 def get_public_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
 
     user_id = current_user['sub']
     tasks = db.execute(
-        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id != user_id).where(Task.is_deleted == False).where(Task.is_public == True)).unique().all()
+        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id != user_id).where(Task.is_public == True)).unique().all()
 
     responseData = [
         {

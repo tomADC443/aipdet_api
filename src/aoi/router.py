@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from src.database import get_db
 from src.aoi.models import AOI
+from src.task.models import Task
 from src.aoi.schemas import AOICreationRequest, AoiGetResponse, AOIDeletionRequest, aoi_id_parameter
 from fastapi.responses import JSONResponse
 from src.dependencies import get_current_user, login_required
@@ -48,18 +49,32 @@ def create_aoi(aoi: AOICreationRequest, db: Session = Depends(get_db), current_u
 @ aois_router.get("", response_model=AoiGetResponse)
 def get_aois(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     user_id = current_user['sub']
-    aoi_query = select(AOI).where(AOI.user_id == user_id)
-    aoi_query_result = db.execute(aoi_query).scalars().all()
-    responseData = [
-        {
-            "id": str(aoi.id),
-            "name": aoi.name,
-            "description": aoi.description,
-            "geometry": aoi.geometry,
-            "createdAt": int(aoi.created_at.timestamp()),
+    aoi_query = select(AOI, Task).distinct(AOI.id).outerjoin(
+        Task, Task.aoi_id == AOI.id).where(AOI.user_id == user_id)
+    aoi_query_result = db.execute(aoi_query).all()
 
-        } for aoi in aoi_query_result
-    ]
+    # Check if tasks are connected(important for deletion)
+    responseData = []
+
+    for result in aoi_query_result:
+        aoi, task = result
+        has_task = False
+
+        if task:
+            print("task found")
+            has_task = True
+
+        responseData.append(
+            {
+                "id": str(aoi.id),
+                "name": aoi.name,
+                "description": aoi.description,
+                "geometry": aoi.geometry,
+                "createdAt": int(aoi.created_at.timestamp()),
+                "hasTask": has_task
+
+            }
+        )
     return {"aois": responseData}
 
 
@@ -75,33 +90,42 @@ def delete_aois(data: AOIDeletionRequest, db: Session = Depends(get_db), current
     """
     try:
         result = db.execute(
-            select(AOI)
+            select(AOI, Task).outerjoin(
+                Task, Task.aoi_id == AOI.id)
             .where(AOI.id == aoi_id)
             .where(AOI.user_id == user_id)
-        ).scalars().first()
-        print(result)
+        ).first()
+
         if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="AOI not found or you don't have permission to delete it."
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "detail": "Do not delete AOIs that are connected to tasks."}
+            )
+        aoi, task = result
+        if task:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    "detail": "Do not delete AOIs that are connected to tasks."}
             )
 
         # Delete the AOI
-        db.delete(result)
-        print("is gelöscht")
+        db.delete(aoi)
         db.commit()
-        print("is commited")
+
         return {
             "message": "AOI successfully deleted.",
             "id": aoi_id
         }
-
     except Exception as e:
-
+        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+    finally:
+        db.close()
 
 
 @ login_required

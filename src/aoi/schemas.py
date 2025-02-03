@@ -59,8 +59,15 @@ class AOI(BaseModel):
     )
 
 
+class AOIWithTask(AOI):
+    hasTask: bool = Field(
+        ...,
+        description="Indicates whether the AOI has an associated task."
+    )
+
+
 class AoiGetResponse(BaseModel):
-    aois: List[AOI] = Field(
+    aois: List[AOIWithTask] = Field(
         ...,
         description="A list of AOIs."
     )
