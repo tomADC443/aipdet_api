@@ -12,6 +12,7 @@ from src.processing_pipeline.spatial_analysis.create_grid import create_grid
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.validation import explain_validity
 from src.processing_pipeline.spatial_analysis.analyse_grid import analyze_grid_observations
+from src.report.utils import execute_safe_query
 from typing import Dict
 
 report_router = APIRouter()
@@ -19,23 +20,23 @@ settings = get_settings()
 
 
 def get_spatial_analysis(id: str, aoi_polygon: Polygon):
+
+    query = """
+    SELECT
+        ST_ASGEOJSON(geo) as valid_area,
+        ST_ASGEOJSON(ndvi_polygons) as NDVI,
+        ST_ASGEOJSON(water_hyacinth_classification) as WHC,
+        utc_capture_start as date
+    FROM `{table}`
+    WHERE process_id = @task_id
+""".format(table=settings.DATABASE_REPORT_TABLE)
+
     try:
 
-        query = (
-            f'SELECT ST_ASGEOJSON(geo) as valid_area, \n'
-            f'ST_ASGEOJSON(ndvi_polygons) as NDVI, \n'
-            f'ST_ASGEOJSON(water_hyacinth_classification) as WHC, \n'
-            f'utc_capture_start as date, \n'
-            f'FROM `{settings.DATABASE_REPORT_TABLE}` \n'
-            f'WHERE process_id=\'{id}\' \n'
+        result = execute_safe_query(
+            query=query,
+            params={"task_id": id}
         )
-
-        client = bigquery.Client.from_service_account_info(
-            json.loads(settings.AIPDET_BE_SA_GCP)
-        )
-
-        query_job = client.query(query)
-        result = query_job.result()
 
         ndvi_areas = []
         whc_areas = []
@@ -99,36 +100,46 @@ def extract_geometry(geom_dict: Dict) -> Polygon | MultiPolygon:
 
 
 def upload_grid_to_bigquery(grid_gdf):
-    client = bigquery.Client.from_service_account_info(
-        json.loads(settings.AIPDET_BE_SA_GCP)
-    )
-    job_config = bigquery.LoadJobConfig(
-        schema=[
-            bigquery.SchemaField("process_id", "STRING", mode="REQUIRED"),
-            bigquery.SchemaField("cell_id", "STRING", mode="REQUIRED"),
-            bigquery.SchemaField("cell_area", "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("total_observed_area",
-                                 "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("cell_intersection_area",
-                                 "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("cell_coverage_ratio",
-                                 "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("total_ndvi_area", "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("ndvi_score", "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("geometry", "GEOGRAPHY", mode="REQUIRED"),
-            bigquery.SchemaField("whc_score", "FLOAT", mode="REQUIRED"),
-            bigquery.SchemaField("total_whc_area", "FLOAT", mode="REQUIRED"),
-        ],
-        write_disposition="WRITE_APPEND",
-    )
+    """Helper function that wraps BigQuery client creation and proper cleanup"""
+    try:
+        client = bigquery.Client.from_service_account_info(
+            json.loads(settings.AIPDET_BE_SA_GCP)
+        )
 
-    job = client.load_table_from_dataframe(
-        grid_gdf,
-        settings.DATABASE_GRID_TABLE,
-        job_config=job_config
-    )
+        job_config = bigquery.LoadJobConfig(
+            schema=[
+                bigquery.SchemaField("process_id", "STRING", mode="REQUIRED"),
+                bigquery.SchemaField("cell_id", "STRING", mode="REQUIRED"),
+                bigquery.SchemaField("cell_area", "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField("total_observed_area",
+                                     "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField(
+                    "cell_intersection_area", "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField("cell_coverage_ratio",
+                                     "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField(
+                    "total_ndvi_area", "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField("ndvi_score", "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField("geometry", "GEOGRAPHY", mode="REQUIRED"),
+                bigquery.SchemaField("whc_score", "FLOAT", mode="REQUIRED"),
+                bigquery.SchemaField(
+                    "total_whc_area", "FLOAT", mode="REQUIRED"),
+            ],
+            write_disposition="WRITE_APPEND",
+        )
 
-    job.result()
-    client.close()
-    print(
-        f"Grid data uploaded to BigQuery table {settings.DATABASE_REPORT_TABLE}")
+        job = client.load_table_from_dataframe(
+            grid_gdf,
+            settings.DATABASE_GRID_TABLE,
+            job_config=job_config
+        )
+
+        job.result()  # Wait for the job to complete
+        print(
+            f"Grid data uploaded to BigQuery table {settings.DATABASE_GRID_TABLE}")
+
+    except Exception as e:
+        print(f"Error uploading to BigQuery: {e}")
+        raise
+    finally:
+        client.close()

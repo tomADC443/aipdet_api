@@ -76,28 +76,35 @@ def delete_task(data: TaskDeletionRequest, db: Session = Depends(get_db), curren
 @ login_required
 @ tasks_router.get("")
 def get_tasks(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    try:
+        user_id = current_user['sub']
+        tasks = db.execute(
+            select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id == user_id)).unique().all()
 
-    user_id = current_user['sub']
-    tasks = db.execute(
-        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id == user_id)).unique().all()
-
-    responseData = [
-        {
-            "id": str(task.id),
-            "name": task.name,
-            "status": task.status,
-            "createdAt": int(task.created_at.timestamp()),
-            "isPublic": task.is_public,
-            "aoi": {
-                "id": str(aoi.id),
-                "name": aoi.name,
-                "description": aoi.description,
-                "geometry": aoi.geometry,
-                "createdAt": int(aoi.created_at.timestamp()),
-            }
-        } for task, aoi in tasks
-    ]
-    return responseData
+        responseData = [
+            {
+                "id": str(task.id),
+                "name": task.name,
+                "status": task.status,
+                "createdAt": int(task.created_at.timestamp()),
+                "isPublic": task.is_public,
+                "aoi": {
+                    "id": str(aoi.id),
+                    "name": aoi.name,
+                    "description": aoi.description,
+                    "geometry": aoi.geometry,
+                    "createdAt": int(aoi.created_at.timestamp()),
+                }
+            } for task, aoi in tasks
+        ]
+        return responseData
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+    finally:
+        db.close()
 
 
 @ login_required
@@ -106,7 +113,7 @@ def get_public_tasks(db: Session = Depends(get_db), current_user: dict = Depends
 
     user_id = current_user['sub']
     tasks = db.execute(
-        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id != user_id).where(Task.is_public == True)).unique().all()
+        select(Task, AOI).join(AOI, Task.aoi_id == AOI.id).where(Task.user_id != user_id).where(Task.is_public == True)).unique().all()  # noqa: E712
 
     responseData = [
         {
@@ -183,4 +190,6 @@ def create_task(background_task: BackgroundTasks, task: TaskCreationRequest, db:
             status_code=500,
             content={"detail": "An internal server error occurred."},
         )
+    finally:
+        db.close()
     # Process the AOI

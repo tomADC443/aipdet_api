@@ -93,6 +93,8 @@ def signup(user: UserSignupRequest, db: Session = Depends(get_db)):
             status_code=500,
             detail=str(e)
         )
+    finally:
+        db.close()
 
 
 @user_router.post("/login", response_model=UserLoginResponse)
@@ -101,51 +103,60 @@ def login(user: UserLoginRequest, response: Response, db: Session = Depends(get_
     Handles user login requests.
     Validates user credentials and sets a JWT as a secure cookie.
     """
-    # Fetch the user from the database
-    db_user = db.execute(select(User).where(
-        User.email == user.email)).scalars().first()
+    try:
+        # Fetch the user from the database
+        db_user = db.execute(select(User).where(
+            User.email == user.email)).scalars().first()
 
-    if not db_user:
-        raise UnauthenticatedLoginException
+        if not db_user:
+            raise UnauthenticatedLoginException
 
-    # Verify the password
-    if not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
-        raise UnauthenticatedLoginException
+        # Verify the password
+        if not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
+            raise UnauthenticatedLoginException
 
-    # Ensure the account is verified
-    if not db_user.verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified. Please check your inbox."
+        # Ensure the account is verified
+        if not db_user.verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email not verified. Please check your inbox."
+            )
+
+        # Generate JWT token
+        jwt_payload = {
+            "sub": str(db_user.id),
+            "email": db_user.email,
+            "firstName": db_user.first_name,
+            "lastName": db_user.last_name,
+        }
+        # Replace with a secure secret key
+        jwt_secret = settings.JWT_SECRET
+        jwt_algorithm = settings.JWT_ALGORITHM
+        token = jwt.encode(jwt_payload, jwt_secret, algorithm=jwt_algorithm)
+
+        cookie_validity = 60*60 * 24*5
+        utc_now = datetime.now(timezone.utc)  # Explicitly set to UTC
+        cookie_expires_at = utc_now + timedelta(seconds=cookie_validity)
+        cookie_secure_flag = False if settings.RUNNING_ENV == "development" else True
+        # Set the token in a secure cookie
+        response.set_cookie(
+            key="auth_token",
+            value=token,
+            httponly=True,
+            secure=cookie_secure_flag,
+            samesite="Strict",
+            max_age=cookie_validity  # 4 hours
         )
 
-    # Generate JWT token
-    jwt_payload = {
-        "sub": str(db_user.id),
-        "email": db_user.email,
-        "firstName": db_user.first_name,
-        "lastName": db_user.last_name,
-    }
-    # Replace with a secure secret key
-    jwt_secret = settings.JWT_SECRET
-    jwt_algorithm = settings.JWT_ALGORITHM
-    token = jwt.encode(jwt_payload, jwt_secret, algorithm=jwt_algorithm)
-
-    cookie_validity = 60*60 * 24*5
-    utc_now = datetime.now(timezone.utc)  # Explicitly set to UTC
-    cookie_expires_at = utc_now + timedelta(seconds=cookie_validity)
-    cookie_secure_flag = False if settings.RUNNING_ENV == "development" else True
-    # Set the token in a secure cookie
-    response.set_cookie(
-        key="auth_token",
-        value=token,
-        httponly=True,
-        secure=cookie_secure_flag,
-        samesite="Strict",
-        max_age=cookie_validity  # 4 hours
-    )
-
-    return {"message": "Login successful.", "expires": int(cookie_expires_at.timestamp())}
+        return {"message": "Login successful.", "expires": int(cookie_expires_at.timestamp())}
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    finally:
+        db.close()
 
 
 @user_router.get("/verify-email", response_class=HTMLResponse)
@@ -156,17 +167,23 @@ def verify_email(user: str, secret: str, db: Session = Depends(get_db)):
     """
     try:
         result = db.get(User, user)
-    except Exception:
-        return HTML_RESPONSE_ERROR
 
-    if not result or result.verify_secret != secret:
-        return HTML_RESPONSE_ERROR
+        if not result or result.verify_secret != secret:
+            return HTML_RESPONSE_ERROR
 
-    result.verified = True
-    db.commit()
-    db.refresh(result)
+        result.verified = True
+        db.commit()
+        db.refresh(result)
 
-    return HTML_RESPONSE_SUCCESS
+        return HTML_RESPONSE_SUCCESS
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    finally:
+        db.close()
 
 
 @user_router.post("/set-new-password")
@@ -214,47 +231,56 @@ def reset_password(user_info: ResetPasswordRequest, db: Session = Depends(get_db
     Handles user password reset via email.
     Issues a token which the use can use to reset their password.
     """
+    try:
+        user = db.execute(select(User).where(
+            User.email == user_info.email)).scalars().first()
 
-    user = db.execute(select(User).where(
-        User.email == user_info.email)).scalars().first()
+        if not user:
+            # always return success to avoid email scraping
+            return {"message": "Password reset initiated"}
 
-    if not user:
-        # always return success to avoid email scraping
-        return {"message": "Password reset initiated"}
+        # Generate a reset token
+        user.reset_token = os.urandom(12).hex()
+        user.reset_token_expiry = datetime.utcnow() + timedelta(hours=24)
+        db.commit()
+        db.refresh(user)
 
-    # Generate a reset token
-    user.reset_token = os.urandom(12).hex()
-    user.reset_token_expiry = datetime.utcnow() + timedelta(hours=24)
-    db.commit()
-    db.refresh(user)
-
-    postmark_response = requests.post(
-        "https://api.postmarkapp.com/email/withTemplate",
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "X-Postmark-Server-Token": settings.POSTMARK_API_TOKEN
-        },
-        json={
-            "From": "noreply@aipdet.com",
-            "To": user.email,
-            "TemplateId": 38232223,  # Replace with your actual template ID
-            "TemplateModel": {
-                "name": user.first_name + ' ' + user.last_name,
-                "action_url": f"{settings.FRONTEND_BASE_URL}/auth/set-new-password?user={user.id}&token={user.reset_token}",
-                "product_name": "AIPDET",
-                "product_url": "www.aipdet.com",
-                "company_name": "AIPDET",
+        postmark_response = requests.post(
+            "https://api.postmarkapp.com/email/withTemplate",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Postmark-Server-Token": settings.POSTMARK_API_TOKEN
+            },
+            json={
+                "From": "noreply@aipdet.com",
+                "To": user.email,
+                "TemplateId": 38232223,  # Replace with your actual template ID
+                "TemplateModel": {
+                    "name": user.first_name + ' ' + user.last_name,
+                    "action_url": f"{settings.FRONTEND_BASE_URL}/auth/set-new-password?user={user.id}&token={user.reset_token}",
+                    "product_name": "AIPDET",
+                    "product_url": "www.aipdet.com",
+                    "company_name": "AIPDET",
+                }
             }
-        }
-    )
-
-    # Check for success
-    if postmark_response.status_code != 200:
-        print("Failed to send email verification:", postmark_response.text)
-        raise HTTPException(
-            status_code=500,
-            detail="User was created, but the email verification failed to send."
         )
 
-    return {"message": "Password reset initiated"}
+        # Check for success
+        if postmark_response.status_code != 200:
+            print("Failed to send email verification:", postmark_response.text)
+            raise HTTPException(
+                status_code=500,
+                detail="User was created, but the email verification failed to send."
+            )
+
+        return {"message": "Password reset initiated"}
+    except Exception as e:
+        # Catch-all for unexpected errors
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    finally:
+        db.close()
