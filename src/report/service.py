@@ -6,61 +6,88 @@ import calendar
 
 
 def get_monthly_average_pivot(df: pd.DataFrame) -> Dict[str, List[Union[str, float]]]:
-    df['month'] = df['capture_date'].dt.month
+    if df.empty:
+        return {'month': [], 'values': []}
+
+    df['month'] = pd.to_datetime(df['capture_date']).dt.month
     monthly_means = df.groupby('month')['ndvi_score'].mean()
     monthly_dict = {
         'month': [calendar.month_abbr[m] for m in monthly_means.index],
-        'values':  [float(x) for x in monthly_means.values.tolist()]
+        'values': [float(x) for x in monthly_means.values.tolist()]
     }
     return monthly_dict
 
 
 def analyze_growth_rate(df: pd.DataFrame) -> Dict[str, Dict[str, str]]:
-    df['week'] = df['capture_date'].dt.isocalendar().week
+    if df.empty:
+        return {
+            'weekly_changes': {'weeks': [], 'values': []},
+            'max_increase': {'week': '0', 'week_description': '', 'change': '0.00', 'change_percentage': '0.0%'},
+            'max_decrease': {'week': '0', 'week_description': '', 'change': '0.00', 'change_percentage': '0.0%'}
+        }
+
+    df['week'] = pd.to_datetime(df['capture_date']).dt.isocalendar().week
     weekly_means = df.groupby('week')['ndvi_score'].mean()
+
+    if len(weekly_means) <= 1:
+        return {
+            'weekly_changes': {'weeks': [int(weekly_means.index[0])], 'values': [None]},
+            'max_increase': {'week': '0', 'week_description': get_week_description(int(weekly_means.index[0])),
+                             'change': '0.00', 'change_percentage': '0.0%'},
+            'max_decrease': {'week': '0', 'week_description': get_week_description(int(weekly_means.index[0])),
+                             'change': '0.00', 'change_percentage': '0.0%'}
+        }
 
     # Clip values to prevent overflow
     weekly_means = weekly_means.clip(-1e308, 1e308)
     changes = weekly_means.diff().clip(-1e308, 1e308)
 
-    max_increase = float(changes.max())
-    max_increase_week = int(changes.idxmax())
-    max_decrease = float(changes.min())
-    max_decrease_week = int(changes.idxmin())
+    max_increase = float(changes.max() or 0)
+    max_increase_week = int(changes.idxmax() if not pd.isna(
+        changes.idxmax()) else weekly_means.index[0])
+    max_decrease = float(changes.min() or 0)
+    max_decrease_week = int(changes.idxmin() if not pd.isna(
+        changes.idxmin()) else weekly_means.index[0])
     max_week = int(max(weekly_means.index))
 
     def get_prev_week(week):
         return max_week if week == 1 else week - 1
 
-    # Make json serializable and replace NaN with None
     changes = {int(k): None if pd.isna(v) else float(v)
                for k, v in changes.to_dict().items()}
 
     results = {
-        'weekly_changes': {'weeks': [int(k) for k in changes.keys()],
-                           'values': [None if pd.isna(v) else float(v) for v in changes.values()]
-                           },
+        'weekly_changes': {
+            'weeks': [int(k) for k in changes.keys()],
+            'values': [None if pd.isna(v) else float(v) for v in changes.values()]
+        },
         'max_increase': {
             'week': str(max_increase_week),
             'week_description': get_week_description(max_increase_week),
             'change': f"{max_increase:.2f}",
-            'change_percentage': f"{((max_increase / weekly_means[get_prev_week(max_increase_week)]) * 100):.1f}%"
+            'change_percentage': f"{((max_increase / weekly_means[get_prev_week(max_increase_week)]) * 100) if max_increase != 0 else 0:.1f}%"
         },
         'max_decrease': {
             'week': str(max_decrease_week),
             'week_description': get_week_description(max_decrease_week),
             'change': f"{max_decrease:.2f}",
-            'change_percentage': f"{((max_decrease / weekly_means[get_prev_week(max_decrease_week)]) * 100):.1f}%"
+            'change_percentage': f"{((max_decrease / weekly_means[get_prev_week(max_decrease_week)]) * 100) if max_decrease != 0 else 0:.1f}%"
         }
     }
 
     return results
 
 
-def analyze_seasonal_patterns_weekly(df) -> List[Dict[str, Union[int, str]]]:
+def analyze_seasonal_patterns_weekly(df: pd.DataFrame) -> List[Dict[str, Union[int, str]]]:
+    if df.empty:
+        return []
+
     # data prep
-    df['week'] = df['capture_date'].dt.isocalendar().week
+    df['week'] = pd.to_datetime(df['capture_date']).dt.isocalendar().week
     weekly_means = df.groupby('week')['ndvi_score'].mean()
+
+    if len(weekly_means) < 6:  # Return early if less than 6 weeks of data
+        return []
 
     # smoothing
     smoothed_values = weekly_means.rolling(
