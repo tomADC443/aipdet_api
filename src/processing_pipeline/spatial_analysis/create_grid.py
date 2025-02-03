@@ -95,7 +95,3 @@ def create_grid(aoi_polygon: Polygon, cell_size: float, source_crs: str = "EPSG:
     )
     grid_gdf = grid_gdf[grid_gdf['cell_intersection_area'] >= 1000]
     return grid_gdf
-
-# Example usage:
-# aoi_polygon = Polygon([(lon1, lat1), (lon2, lat2), ...])  # in WGS84
-# grid_gdf = create_grid(aoi_polygon, cell_size=100)
