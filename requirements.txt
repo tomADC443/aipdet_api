@@ -95,3 +95,5 @@ pyogrio==0.10.0
 pyarrow==19.0.0
 apscheduler==3.11.0 
 tzlocal==5.2
+pytest==8.3.4
+pytest-cov==6.0.0

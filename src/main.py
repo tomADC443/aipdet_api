@@ -68,5 +68,5 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "An internal server error occurred."},
         # Add CORS headers
-        headers={"Access-Control-Allow-Origin": "http://localhost:5173"},
+        headers={"Access-Control-Allow-Origin": origins},
     )
