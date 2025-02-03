@@ -75,6 +75,16 @@ class UserLoginResponse(BaseModel):
         examples=["1733308210"],
         description="The date and time when the login token expires as unix timestamp (seconds)."
     )
+    data: dict = Field(
+        ...,
+        examples={
+            "sub": "1234-1234-1234-1234",
+            "email": "some@email.com",
+            "firstName": "John",
+            "lastName": "Doe"
+        },
+        description="The user's data."
+    )
 
 
 class ResetPasswordRequest(BaseModel):
