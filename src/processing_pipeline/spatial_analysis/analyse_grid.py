@@ -1,11 +1,8 @@
-from pyproj import Transformer
 import numpy as np
-from shapely.geometry import box, Polygon, MultiPolygon
-from shapely.validation import make_valid
-from shapely.ops import transform
+from shapely.geometry import Polygon, MultiPolygon
 import geopandas as gpd  # type: ignore
 from src.processing_pipeline.spatial_analysis.utils import get_utm_zone_from_WGS84
-from typing import List, Optional
+from typing import List
 
 
 def analyze_grid_observations(
