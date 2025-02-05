@@ -10,7 +10,7 @@ import os
 from fastapi.responses import HTMLResponse, JSONResponse
 from src.config import get_settings
 from src.user.constants import HTML_RESPONSE_SUCCESS, HTML_RESPONSE_ERROR
-from src.user.exceptions import UnauthenticatedLoginException, BadTokenException
+from src.user.exceptions import BadTokenException
 import jwt
 from datetime import timedelta, datetime, timezone
 # User router
@@ -109,17 +109,23 @@ def login(user: UserLoginRequest, response: Response, db: Session = Depends(get_
             User.email == user.email)).scalars().first()
 
         if not db_user:
-            raise UnauthenticatedLoginException
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Incorrect email or password."}
+            )
 
         # Verify the password
         if not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
-            raise UnauthenticatedLoginException
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Incorrect email or password."}
+            )
 
         # Ensure the account is verified
         if not db_user.verified:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Email not verified. Please check your inbox."
+                content={"detail": "Email not verified. Please check your inbox."}
             )
 
         # Generate JWT token
