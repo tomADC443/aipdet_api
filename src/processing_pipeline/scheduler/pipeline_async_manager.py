@@ -70,9 +70,11 @@ def pipeline_organizer():
             db.commit()
     db.close()
     start_spatial_analysis_on_tasks_if_ready()
+    print("Task organizer - ended")
 
 
 def start_spatial_analysis_on_tasks_if_ready():
+    print("Spatial analysis worker - started")
     db: Session = SessionLocal()
 
     active_processes = (
@@ -118,3 +120,4 @@ def start_spatial_analysis_on_tasks_if_ready():
 
     db.commit()
     db.close()
+    print("Spatial analysis worker - ended")
