@@ -11,6 +11,12 @@ def start_scheduler():
 
     scheduler.add_job(
         pipeline_organizer,
+        trigger='date',
+        run_date=datetime.now() + timedelta(seconds=30),
+        id="one_time_task",
+    )
+    scheduler.add_job(
+        pipeline_organizer,
         'interval',
         minutes=50,
         id="periodic_task",
