@@ -101,13 +101,20 @@ def start_spatial_analysis_on_tasks_if_ready():
         task: Task = task_with_aoi[0]
         aoi = task_with_aoi[1]
         if task.created_at + timedelta(minutes=80) < datetime.now():
-            print("Task organizer - Spatial analysis started for task", task.id)
-            aoi_polygon = Polygon(aoi['geometry']['coordinates'][0])
-            get_spatial_analysis(str(task.id), aoi_polygon)
-            # Update task status
-            db.execute(update(Task).where(Task.id == task.id).values(
-                status=Task_Status.Successful.value))
-            db.commit()
+            try:
+                print("Task organizer - Spatial analysis started for task", task.id)
+                aoi_polygon = Polygon(aoi['geometry']['coordinates'][0])
+
+                get_spatial_analysis(str(task.id), aoi_polygon)
+                db.execute(update(Task).where(Task.id == task.id).values(
+                    status=Task_Status.Successful.value))
+                db.commit()
+            except Exception as e:
+                print(
+                    f"Task organizer - Error in spatial analysis for task {task.id}: {str(e)}")
+                db.execute(update(Task).where(Task.id == task.id).values(
+                    status=Task_Status.Failed.value))
+                db.commit()
 
     db.commit()
     db.close()
