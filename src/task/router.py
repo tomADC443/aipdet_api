@@ -44,7 +44,8 @@ def delete_task(data: TaskDeletionRequest, db: Session = Depends(get_db), curren
 
         db.execute(
             delete(TaskProcesses).where(TaskProcesses.task_id == data.id))
-
+        db.execute(delete(Task).where(Task.id == data.id))
+        db.commit()
         # Delete from bigQuery
         query = """
             DELETE FROM `{table}` WHERE process_id = @task_id;
