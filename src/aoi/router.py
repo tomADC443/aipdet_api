@@ -63,7 +63,6 @@ def get_aois(db: Session = Depends(get_db), current_user: dict = Depends(get_cur
             has_task = False
 
             if task:
-                print("task found")
                 has_task = True
 
             responseData.append(
