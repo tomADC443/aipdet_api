@@ -28,7 +28,7 @@ def startup_event():
 # CORS configuration
 settings = get_settings()
 
-origins = ["http://localhost:5173"] if settings.RUNNING_ENV == "development" else [
+origins = ['*'] if settings.RUNNING_ENV == "development" else [
     "aipdet.com",
     "www.aipdet.com",
     "https://aipdet.com",
