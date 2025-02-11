@@ -11,9 +11,11 @@ def start_scheduler():
 
     scheduler.add_job(
         pipeline_organizer,
-        trigger='cron',
+        'interval',
         minutes=50,
         id="periodic_task",
+        max_instances=1,
+        misfire_grace_time=300
     )
     scheduler.start()
 
