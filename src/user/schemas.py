@@ -72,17 +72,17 @@ class UserLoginResponse(BaseModel):
     )
     expires: int = Field(
         ...,
-        examples=["1733308210"],
+        examples=[1733308210],
         description="The date and time when the login token expires as unix timestamp (seconds)."
     )
     data: dict = Field(
         ...,
-        examples={
+        examples=[{
             "sub": "1234-1234-1234-1234",
             "email": "some@email.com",
             "firstName": "John",
             "lastName": "Doe"
-        },
+        }],
         description="The user's data."
     )
 
