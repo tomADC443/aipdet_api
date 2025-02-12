@@ -1,30 +1,15 @@
 import ee
-from src.processing_pipeline.gee.task_processing.constants import DAY_ONLY_FEATURE_LABEL
 from src.processing_pipeline.gee.task_processing.metadata import GeeTaskProcessingMetadata
 from src.processing_pipeline.gee.task_processing.constants import P
 
 
 def preprocess_imagery(image_collection: ee.ImageCollection, aoi: ee.Geometry, metadata: GeeTaskProcessingMetadata) -> ee.Image:
 
-    # Add intersection percentage
-    # def add_intersection(image):
-    #     intersection = image.geometry().intersection(aoi, 1)
-    #     return image.set('intersection_area', intersection.area())
-
-    # image_collection = image_collection.map(add_intersection)
-
-    # # Filter out images with minimal intersection
-    # image_collection = image_collection.filter(
-    #     ee.Filter.gt('intersection_area', 0))
-
     def remove_unused_bands(image_collection: ee.ImageCollection):
         return image_collection.select("SCL", "B8", "B4")
 
     def get_clipped_collection(image_collection: ee.ImageCollection, aoi: ee.Geometry):
         return image_collection.map(lambda img: img.clip(aoi))
-
-    # image_collection = remove_unused_bands(image_collection)
-    # image_collection = get_clipped_collection(image_collection, aoi)
 
     image = image_collection.mosaic()
 

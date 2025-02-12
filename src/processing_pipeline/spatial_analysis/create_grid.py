@@ -1,10 +1,8 @@
 from pyproj import Transformer
 import numpy as np
-from shapely.geometry import box, Polygon, MultiPolygon
-from shapely.validation import make_valid
+from shapely.geometry import box, Polygon
 import geopandas as gpd  # type: ignore
 from src.processing_pipeline.spatial_analysis.utils import get_utm_zone_from_WGS84
-from typing import List, Optional
 
 
 def create_grid(aoi_polygon: Polygon, cell_size: float, source_crs: str = "EPSG:4326") -> gpd.GeoDataFrame:

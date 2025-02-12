@@ -10,7 +10,6 @@ from src.processing_pipeline.gee.auth import authenticate
 import ee
 from src.task.constants import Task_Status, final_states
 from src.processing_pipeline.spatial_analysis.main import get_spatial_analysis
-import json
 from shapely.geometry import Polygon
 
 

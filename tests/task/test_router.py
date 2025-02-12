@@ -1,18 +1,15 @@
 from src.aoi.models import AOI
-from shapely.geometry import Polygon
 import uuid
 from src.dependencies import get_current_user
 import pytest
 from fastapi.testclient import TestClient
 from src.main import app  # Ensure this is the correct import for FastAPI app instance
 from src.database import get_db
-from sqlalchemy.orm import Session
 from unittest.mock import Mock
 import json
-from src.task.models import Task, TaskProcesses
+from src.task.models import Task
 from src.task.constants import Task_Status
 from datetime import datetime
-from sqlalchemy import delete
 from unittest.mock import patch
 
 
@@ -61,7 +58,7 @@ def create_mock_task(**kwargs):
         id=kwargs.get('id', str(uuid.uuid4())),  # Ensure ID is a string
         aoi_id=kwargs.get('aoi_id', uuid.uuid4()),
         name=kwargs.get('name', 'Test Task'),
-        # ✅ Ensure deletable status
+        # Ensure deletable status
         status=kwargs.get('status', Task_Status.Successful.value),
         created_at=kwargs.get('created_at', datetime.utcnow()),
         is_public=kwargs.get('is_public', False)

@@ -1,7 +1,6 @@
 import ee
 # P= Property B= Band S= Settings
 from src.processing_pipeline.gee.task_processing.constants import P, B, S
-from src.processing_pipeline.gee.task_processing.utils import calculate_masked_percentage
 from src.processing_pipeline.gee.water_hyacinth_classification.main import classify_water_hyacinth
 
 
